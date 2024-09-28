@@ -3,12 +3,6 @@
 import time
 from machine import UART, Pin
 
-# Initialize UART1 to read from the GPS module
-try:
-    uart1 = UART(1, baudrate=9600, rx=16)
-except ValueError as e:
-    print(f"UART1 error: {e}")
-
 # Global variables to store GPS data
 gps_data = {"fix": "No Fix", "lat": 0.0, "lon": 0.0, "alt": 0, "sats": 0, "pps": 0}
 last_pps_time = None
@@ -21,6 +15,28 @@ error_led.value(0)
 
 # Initialize PPS pin and attach interrupt
 pps_pin = Pin(4, Pin.IN)
+
+# UART object
+uart1 = None
+
+
+# Initialize UART1 to read from the GPS module
+def init_gps():
+    global uart1, success_led, error_led, pps_pin
+
+    try:
+        uart1 = UART(1, baudrate=9600, rx=16)
+    except ValueError as e:
+        print(f"UART1 error: {e}")
+
+    # Reset LED states
+    success_led.value(0)
+    error_led.value(0)
+
+    # Attach interrupt to PPS pin
+    pps_pin.irq(trigger=Pin.IRQ_RISING, handler=pps_handler)
+
+    print("GPS initialized")
 
 
 def pps_handler(pin):
@@ -49,7 +65,10 @@ def convert_to_decimal(degrees_minutes):
 
 # Read GPS data
 def read_gps():
-    global gps_data
+    global gps_data, uart1
+    if uart1 is None:
+        print("UART not initialized. Calling init_gps().")
+        init_gps()
     line = uart1.readline()
     if line:
         try:
