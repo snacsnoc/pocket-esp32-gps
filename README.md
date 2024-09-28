@@ -20,15 +20,17 @@ It also calculates the distance between two set points using GPS coordinates.
 - OLED Display: SCL on pin 22, SDA on pin 21
 - Set Button: pin 13
 - Reset/Mode Button: pin 14
+- Display toggle: pin 33
 - Mode LED: pin 12
 - Success LED: pin 26
 - Error LED: pin 27
+- Warning LEDL: pin 25
 - PPS (Pulse Per Second) from GPS module input: pin 4
 
 ## Usage
 
 1. Connect the hardware components according to the pin configuration.
-2. Upload the `main.py` and `gps_handler.py` files to your ESP32.
+2. Upload the `main.py` and `gps_handler.py` files to your ESP32 running MicroPython
 3. Power on the device.
 4. Drink a glass of water to stay hydrated.
 5. The device will start in GPS display mode, showing real-time GPS data.

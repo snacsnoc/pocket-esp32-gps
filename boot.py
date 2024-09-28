@@ -13,16 +13,31 @@ DEBOUNCE_DELAY = 150
 i2c = I2C(scl=Pin(22), sda=Pin(21))
 display = ssd1306.SSD1306_I2C(128, 64, i2c)
 
+# Display settings
+
+# Dim display
+display.contrast(2)
+# Invert display colours
+# display.invert(1)
+
+# Track display state
+display_on = True
+
 # Built-in ESP32 LED
 builtin_led = Pin(2, Pin.OUT)
 
 # Buttons
 set_button = Pin(13, Pin.IN, Pin.PULL_UP)
 reset_button = Pin(14, Pin.IN, Pin.PULL_UP)
+display_power_button = Pin(33, Pin.IN, Pin.PULL_UP)
 
 # Mode LED
 mode_led = Pin(12, Pin.OUT)
 mode_led.value(0)
+
+# Warning/display off LED
+warning_led = Pin(25, Pin.OUT)
+warning_led.value(0)
 
 # Initialize variables
 builtin_led.value(0)
@@ -127,9 +142,33 @@ def handle_reset_button(pin):
             display_text("Distance Mode", "Set Point A")
 
 
+# Button handler to toggle display power
+# TODO: put ESP32 in deep sleep
+def handle_display_power(pin):
+    global display_on
+    time.sleep_ms(DEBOUNCE_DELAY)
+    if not pin.value():
+        print("Pressed display power button")
+        # Toggle display state
+        if display_on:
+            display.poweroff()
+            warning_led.value(1)
+            display_on = False
+            print("Display turned off")
+        else:
+            display.poweron()
+            warning_led.value(0)
+            display_on = True
+            print("Display turned on")
+
+        # Optional: Add visual feedback with an LED
+        builtin_led.value(not builtin_led.value())  # Toggle built-in LED
+
+
 # Attach interrupts to buttons
 set_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_set_button)
 reset_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_reset_button)
+display_power_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_display_power)
 # Note: the PPS interrupt handler is set in gps_handler.py
 
 # Start reading GPS data
@@ -140,7 +179,7 @@ display.show()
 while True:
     # Continuously read GPS data
     gps_handler.read_gps()
-
-    if mode == 0:  # GPS Display Mode
-        update_gps_display()
+    if display_on:
+        if mode == 0:  # GPS Display Mode
+            update_gps_display()
     time.sleep(0.5)
