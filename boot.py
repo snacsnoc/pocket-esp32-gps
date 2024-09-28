@@ -5,6 +5,7 @@ import time
 from machine import Pin, I2C
 import ssd1306
 import gps_handler
+from gps_handler import error_led
 
 # Button debounce delay in ms
 DEBOUNCE_DELAY = 150
@@ -121,6 +122,9 @@ def handle_set_button(pin):
                 display_text("Distance:", f"{distance:.2f} m", "Press mode btn")
                 print(f"Distance: {distance:.2f} meters")
         else:
+            display.fill(0)
+            display_text("No GPS fix", "Press button again")
+            error_led.value(1)
             print("No valid GPS data available")
 
 
@@ -160,9 +164,6 @@ def handle_display_power(pin):
             warning_led.value(0)
             display_on = True
             print("Display turned on")
-
-        # Optional: Add visual feedback with an LED
-        builtin_led.value(not builtin_led.value())  # Toggle built-in LED
 
 
 # Attach interrupts to buttons
