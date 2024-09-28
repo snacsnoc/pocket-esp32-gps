@@ -121,6 +121,13 @@ def handle_set_button(pin):
                 display.fill(0)
                 display_text("Distance:", f"{distance:.2f} m", "Press mode btn")
                 print(f"Distance: {distance:.2f} meters")
+            else:
+                # Reset points if both are already set
+                point_A = None
+                point_B = None
+                display.fill(0)
+                display_text("Points reset", "Set new Point A")
+                print("Points reset. Ready to set new points.")
         else:
             display.fill(0)
             display_text("No GPS fix", "Press button again")
