@@ -2,11 +2,22 @@
 
 from lib.typing import Tuple, Optional
 import time
-from machine import Pin, I2C, lightsleep, freq, ADC
+from machine import (
+    Pin,
+    I2C,
+    lightsleep,
+    freq,
+    ADC,
+    deepsleep,
+    reset_cause,
+    DEEPSLEEP_RESET,
+)
+import esp32
 import ssd1306
 import gps_handler
 from gps_handler import error_led
 from utils import haversine
+import utime
 
 # Button debounce delay in ms
 DEBOUNCE_DELAY = 150
@@ -44,6 +55,13 @@ LCD_DISPLAY_SETTINGS = {
 display.contrast(LCD_DISPLAY_SETTINGS["contrast"])
 display.invert(LCD_DISPLAY_SETTINGS["invert"])
 
+
+if reset_cause() == DEEPSLEEP_RESET:
+    print("Woke from deep sleep")
+    time.sleep(0.5)
+    display_on = True
+    gps_handler.init_gps()
+    display.poweron()
 
 # Track display state
 display_on = True
@@ -167,23 +185,34 @@ def handle_reset_button(pin):
 
 
 # Button handler to toggle display power
-# TODO: put ESP32 in deep sleep
 def handle_display_power(pin):
     global display_on
     time.sleep_ms(DEBOUNCE_DELAY)
     if not pin.value():
         print("Pressed display power button")
-        # Toggle display state
         if display_on:
+            # Prepare for deep sleep
             display.poweroff()
             warning_led.value(1)
-            display_on = False
-            print("Display turned off")
+            print("Entering deep sleep")
+
+            # Configure wake-up source using the same btn
+            esp32.wake_on_ext0(pin=display_power_button, level=0)
+            # Wait for 1 second to avoid immediate wake-up
+            # This is just to avoid immediate wake-up
+            utime.sleep(1)
+            # Enter deep sleep
+            deepsleep()
         else:
+            # Wake up actions
             display.poweron()
             warning_led.value(0)
             display_on = True
-            print("Display turned on")
+            print("Waking up from deep sleep")
+
+            # Re-initialize GPS
+            # This is probably redundant, but just in case
+            gps_handler.init_gps()
 
 
 def enter_settings_mode():
