@@ -132,13 +132,11 @@ def handle_set_button(pin):
     global is_editing
     time.sleep_ms(DEBOUNCE_DELAY)
     if not pin.value():
-        # Distance mode
         if current_mode == 1:
             set_distance_point()
-        # Settings mode
-        if current_mode == 2:
-            is_editing = not is_editing
-            update_settings_display()
+        elif current_mode == 2:  # Settings mode
+            apply_setting_change()
+        update_settings_display()
 
 
 def set_distance_point() -> None:
@@ -199,31 +197,18 @@ def handle_reset_button(pin):
 
 
 def handle_nav_button(pin):
-    global settings_index, is_editing
+    global settings_index
     time.sleep_ms(DEBOUNCE_DELAY)
     if not pin.value():
-        # Settings mode
-        if current_mode == 2:
-            if is_editing:
-                if settings_index == 0:  # Contrast
-                    LCD_DISPLAY_SETTINGS["contrast"] = (
-                        LCD_DISPLAY_SETTINGS["contrast"] % 15
-                    ) + 1
-                    display.contrast(LCD_DISPLAY_SETTINGS["contrast"])
-                elif settings_index == 1:  # Invert Display
-                    LCD_DISPLAY_SETTINGS["invert"] = not LCD_DISPLAY_SETTINGS["invert"]
-                    display.invert(LCD_DISPLAY_SETTINGS["invert"])
-                elif settings_index == 2:  # Power Save Mode
-                    DEVICE_SETTINGS["pwr_save"] = not DEVICE_SETTINGS["pwr_save"]
-                    toggle_pwrsave_mode()
-            else:
-                settings_index = (settings_index + 1) % len(SETTINGS_OPTIONS)
+        if current_mode == 2:  # Settings mode
+            settings_index = (settings_index + 1) % len(SETTINGS_OPTIONS)
             update_settings_display()
 
 
 # Toggle device power save mode
 # Lowers clock speed and turns on other options to save power
 def toggle_pwrsave_mode():
+    DEVICE_SETTINGS["pwr_save"] = not DEVICE_SETTINGS["pwr_save"]
     if DEVICE_SETTINGS["pwr_save"]:
         print("Entering power save mode")
         # Set clock speed to 80MHz
@@ -231,7 +216,23 @@ def toggle_pwrsave_mode():
     else:
         print("Exiting power save mode")
         # Set clock speed to 240MHz
-        freq(2400000000)
+        freq(240000000)
+    print(f"Power save mode: {'On' if DEVICE_SETTINGS['pwr_save'] else 'Off'}")
+
+
+def apply_setting_change():
+    global is_editing
+    if settings_index == 0:  # Contrast
+        LCD_DISPLAY_SETTINGS["contrast"] = (LCD_DISPLAY_SETTINGS["contrast"] % 15) + 1
+        display.contrast(LCD_DISPLAY_SETTINGS["contrast"])
+    elif settings_index == 1:  # Invert Display
+        LCD_DISPLAY_SETTINGS["invert"] = not LCD_DISPLAY_SETTINGS["invert"]
+        display.invert(LCD_DISPLAY_SETTINGS["invert"])
+    elif settings_index == 2:  # Power Save Mode
+        toggle_pwrsave_mode()
+
+    # Toggle editing mode
+    is_editing = not is_editing
 
 
 # Button handler to toggle display power
@@ -277,11 +278,11 @@ def update_settings_display():
     # and whether it's being edited or not
     # Use > to indicate the cursor
     # Use * to indicate which setting is currently being edited
+
     for i in range(start_index, end_index):
         option = SETTINGS_OPTIONS[i]
         prefix = ">" if i == settings_index else " "
-        suffix = "*" if i == settings_index and is_editing else " "
-        display.text(f"{prefix}{option}{suffix}", 0, (i - start_index + 1) * 16)
+        display.text(f"{prefix}{option}", 0, (i - start_index + 1) * 16)
 
     # Display the current value of the selected option
     if settings_index == 0:
@@ -289,7 +290,7 @@ def update_settings_display():
     elif settings_index == 1:
         value = f"Invert: {'On' if LCD_DISPLAY_SETTINGS['invert'] else 'Off'}"
     elif settings_index == 2:
-        value = f"PWR Save: {'On' if DEVICE_SETTINGS['pwrsave'] else 'Off'}"
+        value = f"PWR Save: {'On' if DEVICE_SETTINGS['pwr_save'] else 'Off'}"
     else:
         value = ""
 
@@ -309,6 +310,7 @@ def enter_settings_mode():
 
 def display_about():
     display_text("Pocket ESP32 GPS", "v1.0", "By Easton")
+    print(f"Current CPU frequency: {freq() / 1000000} MHz")
 
 
 # Enter mode based on current_mode
