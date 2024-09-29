@@ -17,7 +17,7 @@ from machine import (
 import os
 import gc
 import esp32
-import ssd1306
+import lib.ssd1306 as ssd1306
 import gps_handler
 from gps_handler import error_led
 from lib.utils import haversine
