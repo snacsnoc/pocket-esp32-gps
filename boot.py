@@ -18,9 +18,9 @@ import os
 import gc
 import esp32
 import lib.ssd1306 as ssd1306
-import gps_handler
-from gps_handler import error_led
-from lib.utils import haversine
+from handlers.gps_handler import GPSHandler
+
+from utils.haversine import haversine
 import utime
 import ujson
 
@@ -32,7 +32,11 @@ POWERSAVE_BOOT = False
 i2c = I2C(scl=Pin(22), sda=Pin(21))
 display = ssd1306.SSD1306_I2C(128, 64, i2c)
 
+gps = GPSHandler()
+
 debounce_timer = Timer(1)
+
+gps.init_gps()
 
 if POWERSAVE_BOOT:
     # Set CPU frequency to 80MHz for power saving
@@ -67,7 +71,7 @@ if reset_cause() == DEEPSLEEP_RESET:
     print("Woke from deep sleep")
     lightsleep(500)
     display_on = True
-    gps_handler.init_gps()
+    gps.gps_handler.init_gps()
     display.poweron()
 
 
@@ -123,18 +127,18 @@ def update_gps_display():
     global current_mode
     display.fill(0)
 
-    if gps_handler.gps_data["fix"] == "Valid":
-        display.text(f"Fix: {gps_handler.gps_data['fix']}", 0, 0)
-        display.text(f"Lat: {gps_handler.gps_data['lat']:.6f}", 0, 16)
-        display.text(f"Lon: {gps_handler.gps_data['lon']:.6f}", 0, 24)
-        display.text(f"Alt: {gps_handler.gps_data['alt']}m", 0, 32)
-        display.text(f"Sats: {gps_handler.gps_data['sats']}", 0, 40)
-        display.text(f"PPS: {gps_handler.gps_data['pps']}us", 0, 48)
+    if gps.gps_data["fix"] == "Valid":
+        display.text(f"Fix: {gps.gps_data['fix']}", 0, 0)
+        display.text(f"Lat: {gps.gps_data['lat']:.6f}", 0, 16)
+        display.text(f"Lon: {gps.gps_data['lon']:.6f}", 0, 24)
+        display.text(f"Alt: {gps.gps_data['alt']}m", 0, 32)
+        display.text(f"Sats: {gps.gps_data['sats']}", 0, 40)
+        display.text(f"PPS: {gps.gps_data['pps']}us", 0, 48)
     else:
         display.text("No Fix", 0, 0)
-        if gps_handler.gps_data["pps"]:
-            display.text(f"PPS: {gps_handler.gps_data['pps']}us", 0, 48)
-        print(f"GPS Data: {gps_handler.gps_data}")
+        if gps.gps_data["pps"]:
+            display.text(f"PPS: {gps.gps_data['pps']}us", 0, 48)
+        print(f"GPS Data: {gps.gps_data}")
 
     display.show()
 
@@ -169,11 +173,11 @@ def set_distance_point() -> None:
     mode_led.value(1)
     print("pressed set button")
 
-    lat: float = gps_handler.gps_data["lat"]
-    lon: float = gps_handler.gps_data["lon"]
+    lat: float = gps.gps_data["lat"]
+    lon: float = gps.gps_data["lon"]
 
     # Check if we have a valid fix before setting
-    if gps_handler.gps_data["fix"] == "Valid":
+    if gps.gps_data["fix"] == "Valid":
         if point_A is None:
             point_A: Tuple[float, float] = (lat, lon)
             display_text("Point A set", f"Lat: {lat:.6f}")
@@ -197,7 +201,7 @@ def set_distance_point() -> None:
         enter_distance_mode()
     else:
         display_text("No GPS fix", "Try again later")
-        error_led.value(1)
+        gps.error_led.value(1)
         print("No valid GPS data available")
 
 
@@ -210,15 +214,6 @@ def enter_distance_mode():
     else:
         distance = haversine(point_A[0], point_A[1], point_B[0], point_B[1])
         display_text("Distance:", f"{distance:.2f} m", "SET to reset")
-
-
-# Button handler to reset/mode change
-# def handle_reset_button(pin):
-#     global current_mode
-#     time.sleep_ms(DEBOUNCE_DELAY)
-#     if not pin.value():
-#         current_mode = (current_mode + 1) % len(MODES)
-#         enter_mode(current_mode)
 
 
 def handle_reset_button(pin):
@@ -300,7 +295,7 @@ def handle_display_power(pin):
 
             # Re-initialize GPS
             # This is probably redundant, but just in case
-            gps_handler.init_gps()
+            gps.init_gps()
 
 
 def update_settings_display():
@@ -421,9 +416,14 @@ initialize_display()
 # Main loop
 while True:
     try:
-        gps_handler.read_gps()
-        enter_mode(current_mode)
+        gps_data = gps.read_gps()
+        if gps_data:
+            enter_mode(current_mode)
+        else:
+            print("No GPS data received")
         lightsleep(100)
     except Exception as e:
         print(f"Error in main loop: {e}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error args: {e.args}")
         time.sleep(1)
