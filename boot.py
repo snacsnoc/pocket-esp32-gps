@@ -12,6 +12,7 @@ from machine import (
     lightsleep,
     reset_cause,
     DEEPSLEEP_RESET,
+    Timer,
 )
 import os
 import gc
@@ -30,6 +31,8 @@ POWERSAVE_BOOT = False
 # Initialize I2C and display
 i2c = I2C(scl=Pin(22), sda=Pin(21))
 display = ssd1306.SSD1306_I2C(128, 64, i2c)
+
+debounce_timer = Timer(1)
 
 if POWERSAVE_BOOT:
     # Set CPU frequency to 80MHz for power saving
@@ -62,10 +65,11 @@ display.invert(LCD_DISPLAY_SETTINGS["invert"])
 
 if reset_cause() == DEEPSLEEP_RESET:
     print("Woke from deep sleep")
-    lightsleep(0.5)
+    lightsleep(500)
     display_on = True
     gps_handler.init_gps()
     display.poweron()
+
 
 # Track display state
 display_on = True
@@ -108,17 +112,34 @@ SETTINGS_OPTIONS = ["Contrast", "Invert Display", "Power Save Mode"]
 # Settings menu options
 is_editing = False
 
+
+def initialize_display():
+    global current_mode
+    enter_mode(current_mode)
+
+
 # Update the GPS display
 def update_gps_display():
-    if current_mode == 0:
-        display.fill(0)
+    global current_mode
+    display.fill(0)
+
+    if gps_handler.gps_data["fix"] == "Valid":
         display.text(f"Fix: {gps_handler.gps_data['fix']}", 0, 0)
         display.text(f"Lat: {gps_handler.gps_data['lat']:.6f}", 0, 16)
         display.text(f"Lon: {gps_handler.gps_data['lon']:.6f}", 0, 24)
         display.text(f"Alt: {gps_handler.gps_data['alt']}m", 0, 32)
         display.text(f"Sats: {gps_handler.gps_data['sats']}", 0, 40)
         display.text(f"PPS: {gps_handler.gps_data['pps']}us", 0, 48)
-        display.show()
+    else:
+        display.text("No Fix", 0, 0)
+        if gps_handler.gps_data["pps"]:
+            display.text(f"PPS: {gps_handler.gps_data['pps']}us", 0, 48)
+        print(f"GPS Data: {gps_handler.gps_data}")
+
+    display.show()
+
+    # Toggle mode LED
+    mode_led.value(not mode_led.value())
 
 
 # Display two lines of text, optionally three
@@ -192,10 +213,21 @@ def enter_distance_mode():
 
 
 # Button handler to reset/mode change
+# def handle_reset_button(pin):
+#     global current_mode
+#     time.sleep_ms(DEBOUNCE_DELAY)
+#     if not pin.value():
+#         current_mode = (current_mode + 1) % len(MODES)
+#         enter_mode(current_mode)
+
+
 def handle_reset_button(pin):
+    debounce_timer.init(mode=Timer.ONE_SHOT, period=50, callback=on_debounced_press)
+
+
+def on_debounced_press(timer):
     global current_mode
-    time.sleep_ms(DEBOUNCE_DELAY)
-    if not pin.value():
+    if not reset_mode_button.value():
         current_mode = (current_mode + 1) % len(MODES)
         enter_mode(current_mode)
 
@@ -359,11 +391,21 @@ def enter_mode(mode):
     if mode == 0:
         update_gps_display()
     elif mode == 1:
+        mode_led.value(1)
         enter_distance_mode()
     elif mode == 2:
+        mode_led.value(1)
         enter_settings_mode()
     elif mode == 3:
+        mode_led.value(1)
         display_about()
+
+
+def periodic_task(timer):
+    global current_mode
+    global display_on
+    if display_on:
+        enter_mode(current_mode)
 
 
 # Attach interrupts to buttons
@@ -373,11 +415,15 @@ display_power_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_display_power)
 nav_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_nav_button)
 # Note: the PPS interrupt handler is set in gps_handler.py
 
+
+initialize_display()
+
 # Main loop
 while True:
     try:
         gps_handler.read_gps()
-        lightsleep(200)
+        enter_mode(current_mode)
+        lightsleep(100)
     except Exception as e:
         print(f"Error in main loop: {e}")
         time.sleep(1)
