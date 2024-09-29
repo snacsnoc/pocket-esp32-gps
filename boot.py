@@ -9,6 +9,7 @@ from machine import (
     freq,
     ADC,
     deepsleep,
+    lightsleep,
     reset_cause,
     DEEPSLEEP_RESET,
 )
@@ -60,7 +61,7 @@ display.invert(LCD_DISPLAY_SETTINGS["invert"])
 
 if reset_cause() == DEEPSLEEP_RESET:
     print("Woke from deep sleep")
-    time.sleep(0.5)
+    lightsleep(0.5)
     display_on = True
     gps_handler.init_gps()
     display.poweron()
@@ -369,4 +370,4 @@ while True:
     gps_handler.read_gps()
     if display_on:
         enter_mode(current_mode)
-    time.sleep(0.5)
+    lightsleep(0.5)
