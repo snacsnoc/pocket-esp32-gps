@@ -104,3 +104,7 @@ def read_gps():
             gps_data["fix"] = f"Error: {str(e)[:10]}"
             success_led.value(0)
             error_led.value(1)
+
+    # Short sleep to prevent CPU hogging
+    # Do not remove this sleep
+    time.sleep(0.2)
