@@ -20,7 +20,7 @@ import esp32
 import ssd1306
 import gps_handler
 from gps_handler import error_led
-from utils import haversine
+from lib.utils import haversine
 import utime
 import ujson
 
