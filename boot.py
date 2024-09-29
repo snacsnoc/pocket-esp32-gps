@@ -72,8 +72,9 @@ builtin_led.value(0)
 
 # Buttons
 set_button = Pin(13, Pin.IN, Pin.PULL_UP)
-reset_button = Pin(14, Pin.IN, Pin.PULL_UP)
+reset_mode_button = Pin(14, Pin.IN, Pin.PULL_UP)
 display_power_button = Pin(33, Pin.IN, Pin.PULL_UP)
+nav_button = Pin(32, Pin.IN, Pin.PULL_UP)
 
 # Mode LED
 mode_led = Pin(12, Pin.OUT)
@@ -88,11 +89,20 @@ warning_led.value(0)
 point_A = None
 point_B = None
 
+DEVICE_SETTINGS = {
+    "pwr_save": False,
+}
+
 # 0: GPS Display, 1: Distance Calculation, 2: Settings, 3: About
 current_mode = 0
 # Menu options
 MODES = ["GPS Display", "Distance Calc", "Settings", "About"]
 
+# Settings menu
+settings_index = 0
+SETTINGS_OPTIONS = ["Contrast", "Invert Display", "Power Save Mode"]
+# Settings menu options
+is_editing = False
 
 # Update the GPS display
 def update_gps_display():
@@ -119,12 +129,16 @@ def display_text(line1, line2, line3=None):
 
 
 def handle_set_button(pin):
+    global is_editing
     time.sleep_ms(DEBOUNCE_DELAY)
     if not pin.value():
         # Distance mode
         if current_mode == 1:
             set_distance_point()
-        # Add other mode-specific SET button actions here
+        # Settings mode
+        if current_mode == 2:
+            is_editing = not is_editing
+            update_settings_display()
 
 
 def set_distance_point() -> None:
@@ -184,6 +198,42 @@ def handle_reset_button(pin):
         enter_mode(current_mode)
 
 
+def handle_nav_button(pin):
+    global settings_index, is_editing
+    time.sleep_ms(DEBOUNCE_DELAY)
+    if not pin.value():
+        # Settings mode
+        if current_mode == 2:
+            if is_editing:
+                if settings_index == 0:  # Contrast
+                    LCD_DISPLAY_SETTINGS["contrast"] = (
+                        LCD_DISPLAY_SETTINGS["contrast"] % 15
+                    ) + 1
+                    display.contrast(LCD_DISPLAY_SETTINGS["contrast"])
+                elif settings_index == 1:  # Invert Display
+                    LCD_DISPLAY_SETTINGS["invert"] = not LCD_DISPLAY_SETTINGS["invert"]
+                    display.invert(LCD_DISPLAY_SETTINGS["invert"])
+                elif settings_index == 2:  # Power Save Mode
+                    DEVICE_SETTINGS["pwr_save"] = not DEVICE_SETTINGS["pwr_save"]
+                    toggle_pwrsave_mode()
+            else:
+                settings_index = (settings_index + 1) % len(SETTINGS_OPTIONS)
+            update_settings_display()
+
+
+# Toggle device power save mode
+# Lowers clock speed and turns on other options to save power
+def toggle_pwrsave_mode():
+    if DEVICE_SETTINGS["pwr_save"]:
+        print("Entering power save mode")
+        # Set clock speed to 80MHz
+        freq(80000000)
+    else:
+        print("Exiting power save mode")
+        # Set clock speed to 240MHz
+        freq(2400000000)
+
+
 # Button handler to toggle display power
 def handle_display_power(pin):
     global display_on
@@ -215,8 +265,36 @@ def handle_display_power(pin):
             gps_handler.init_gps()
 
 
+def update_settings_display():
+    display.fill(0)
+    display.text("Settings", 0, 0)
+    # Use the index to determine which setting is currently being edited
+    # and whether it's being edited or not
+    # Use > to indicate the cursor
+    # Use * to indicate which setting is currently being edited
+    for i, option in enumerate(SETTINGS_OPTIONS):
+        prefix = ">" if i == settings_index else " "
+        suffix = "*" if i == settings_index and is_editing else " "
+        display.text(f"{prefix}{option}: {suffix}", 0, (i + 1) * 16)
+        print(f"{prefix}{option}: {suffix}")
+
+    if settings_index == 0:
+        display.text(f"Contrast: {LCD_DISPLAY_SETTINGS['contrast']}", 0, 48)
+    elif settings_index == 1:
+        display.text(
+            f"Invert: {'On' if LCD_DISPLAY_SETTINGS['invert'] else 'Off'}", 0, 48
+        )
+    elif settings_index == 2:
+        display.text(
+            f"Power Save Mode: {'On' if DEVICE_SETTINGS['pwrsave'] else 'Off'}", 0, 48
+        )
+    display.show()
+
+
 def enter_settings_mode():
-    display_text("Settings", "Contrast", str(LCD_DISPLAY_SETTINGS["contrast"]))
+    global is_editing
+    is_editing = False
+    update_settings_display()
 
 
 def display_about():
@@ -225,6 +303,7 @@ def display_about():
 
 # Enter mode based on current_mode
 def enter_mode(mode):
+    print(f"Entering mode {mode}")
     if mode == 0:
         update_gps_display()
     elif mode == 1:
@@ -237,8 +316,9 @@ def enter_mode(mode):
 
 # Attach interrupts to buttons
 set_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_set_button)
-reset_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_reset_button)
+reset_mode_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_reset_button)
 display_power_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_display_power)
+nav_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_nav_button)
 # Note: the PPS interrupt handler is set in gps_handler.py
 
 # Main loop

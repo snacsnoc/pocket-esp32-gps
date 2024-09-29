@@ -21,6 +21,7 @@ It also calculates the distance between two set points using GPS coordinates.
 - Set Button: pin 13
 - Reset/Mode Button: pin 14
 - Display toggle: pin 33
+- Navigate button: pin 32
 - Mode LED: pin 12
 - Success LED: pin 26
 - Error LED: pin 27
