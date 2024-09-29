@@ -268,27 +268,37 @@ def handle_display_power(pin):
 def update_settings_display():
     display.fill(0)
     display.text("Settings", 0, 0)
+
+    # Display only 3 options at a time
+    start_index = max(0, settings_index - 1)
+    end_index = min(len(SETTINGS_OPTIONS), start_index + 3)
+
     # Use the index to determine which setting is currently being edited
     # and whether it's being edited or not
     # Use > to indicate the cursor
     # Use * to indicate which setting is currently being edited
-    for i, option in enumerate(SETTINGS_OPTIONS):
+    for i in range(start_index, end_index):
+        option = SETTINGS_OPTIONS[i]
         prefix = ">" if i == settings_index else " "
         suffix = "*" if i == settings_index and is_editing else " "
-        display.text(f"{prefix}{option}: {suffix}", 0, (i + 1) * 16)
-        print(f"{prefix}{option}: {suffix}")
+        display.text(f"{prefix}{option}{suffix}", 0, (i - start_index + 1) * 16)
 
+    # Display the current value of the selected option
     if settings_index == 0:
-        display.text(f"Contrast: {LCD_DISPLAY_SETTINGS['contrast']}", 0, 48)
+        value = f"Contrast: {LCD_DISPLAY_SETTINGS['contrast']}"
     elif settings_index == 1:
-        display.text(
-            f"Invert: {'On' if LCD_DISPLAY_SETTINGS['invert'] else 'Off'}", 0, 48
-        )
+        value = f"Invert: {'On' if LCD_DISPLAY_SETTINGS['invert'] else 'Off'}"
     elif settings_index == 2:
-        display.text(
-            f"Power Save Mode: {'On' if DEVICE_SETTINGS['pwrsave'] else 'Off'}", 0, 48
-        )
+        value = f"PWR Save: {'On' if DEVICE_SETTINGS['pwrsave'] else 'Off'}"
+    else:
+        value = ""
+
+    # Display current setting value at the bottom of the screen
+    display.text(value, 0, 56)
     display.show()
+
+    print(f"Settings Index: {settings_index}, Editing: {is_editing}")
+    print(f"Displayed Value: {value}")
 
 
 def enter_settings_mode():
