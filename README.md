@@ -8,7 +8,7 @@ It also calculates the distance between two set points using GPS coordinates.
 
 - ESP32 development board
   - ESP8266 can be used but the UART RX pins must be reassigned
-- GPS module (compatible with UART) - U7M module used
+- GPS module (compatible with UART) - GT U7M module used
 - SSD1306 OLED display
 - Buttons for setting points and switching modes
 - LEDs for status indication
@@ -39,17 +39,10 @@ It also calculates the distance between two set points using GPS coordinates.
 7. In distance mode, press the set button to mark point A, then again to mark point B.
 8. The device will display the calculated distance between the two points.
 
-## Files
-
-- `main.py`: Main program logic, display handling, and button interactions
-- `gps_handler.py`: GPS data parsing and management
-
-## Dependencies
-
-- `machine`: For hardware control
-- `ssd1306`: For OLED display control
-- `math`: For distance calculations
-
 ## Note
 
 The GPS module works best when you have a clear view of the sky.
+
+## License
+This project is licensed under the GNU General Public License v3.0 (GPLv3), see `LICENSE` for more details.
+This project uses the `ssd1306.py` driver from the MicroPython project, which is licensed under the MIT License. See `LICENSE-MIT`.
