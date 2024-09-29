@@ -12,6 +12,8 @@ from machine import (
     reset_cause,
     DEEPSLEEP_RESET,
 )
+import os
+import gc
 import esp32
 import ssd1306
 import gps_handler
@@ -212,7 +214,8 @@ def toggle_pwrsave_mode():
     if DEVICE_SETTINGS["pwr_save"]:
         print("Entering power save mode")
         # Set clock speed to 80MHz
-        freq(80000000)
+        # Valid settings are 20MHz, 40MHz, 80Mhz, 160MHz or 240MHz (ESP32)
+        freq(40000000)
     else:
         print("Exiting power save mode")
         # Set clock speed to 240MHz
@@ -309,13 +312,40 @@ def enter_settings_mode():
 
 
 def display_about():
-    display_text("Pocket ESP32 GPS", "v1.0", "By Easton")
-    print(f"Current CPU frequency: {freq() / 1000000} MHz")
+    display.fill(0)
+    display.text("Pocket ESP32 GPS", 0, 0)
+    display.text("v1.0 By Easton", 0, 10)
+
+    # CPU frequency
+    cpu_freq = freq() / 1_000_000
+    display.text(f"CPU: {cpu_freq:.0f} MHz", 0, 20)
+
+    # Free RAM
+    free_ram = gc.mem_free() / 1024
+    display.text(f"Free RAM: {free_ram:.1f} KB", 0, 30)
+
+    # Available storage
+    try:
+        storage_info = os.statvfs("/")
+        total_space = storage_info[0] * storage_info[2] / (1024 * 1024)
+        free_space = storage_info[0] * storage_info[3] / (1024 * 1024)
+        display.text(f"Storage: {free_space:.1f}/{total_space:.1f}MB", 0, 40)
+    except:
+        display.text("Storage info N/A", 0, 40)
+
+    # Temperature if available
+    try:
+        temp_fahrenheit = esp32.raw_temperature()
+        temp_celsius = (temp_fahrenheit - 32) * 5 / 9
+        display.text(f"Temp: {temp_celsius:.2f} C", 0, 50)
+    except:
+        display.text("Temp info N/A", 0, 50)
+
+    display.show()
 
 
 # Enter mode based on current_mode
 def enter_mode(mode):
-    print(f"Entering mode {mode}")
     if mode == 0:
         update_gps_display()
     elif mode == 1:
