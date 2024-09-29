@@ -21,6 +21,7 @@ import gps_handler
 from gps_handler import error_led
 from utils import haversine
 import utime
+import ujson
 
 # Button debounce delay in ms
 DEBOUNCE_DELAY = 150
@@ -312,6 +313,14 @@ def enter_settings_mode():
     update_settings_display()
 
 
+def save_settings():
+    try:
+        with open("settings.json", "w") as f:
+            ujson.dump({"lcd": LCD_DISPLAY_SETTINGS, "device": DEVICE_SETTINGS}, f)
+    except:
+        print("Failed to save settings")
+
+
 def display_about():
     display.fill(0)
     display.text("Pocket ESP32 GPS", 0, 0)
@@ -366,8 +375,9 @@ nav_button.irq(trigger=Pin.IRQ_FALLING, handler=handle_nav_button)
 
 # Main loop
 while True:
-    # Continuously read GPS data
-    gps_handler.read_gps()
-    if display_on:
-        enter_mode(current_mode)
-    lightsleep(0.5)
+    try:
+        gps_handler.read_gps()
+        lightsleep(200)
+    except Exception as e:
+        print(f"Error in main loop: {e}")
+        time.sleep(1)
