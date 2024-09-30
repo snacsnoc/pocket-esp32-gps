@@ -63,18 +63,22 @@ class DisplayHandler:
         # Display fix status
         self.display.text(f"Fix: {fix_status}", 0, 0)
 
+        # Display UTC time if available
+        if self.gps.gps_data["utc_time"]:
+            self.display.text(f"UTC: {self.gps.gps_data['utc_time']}", 0, 9)
+
         # Display available data based on fix status
         if fix_status == "Valid" or fix_status == "Partial":
             if "lat" in self.gps.gps_data and self.gps.gps_data["lat"] is not None:
-                self.display.text(f"Lat: {self.gps.gps_data['lat']:.6f}", 0, 16)
+                self.display.text(f"Lat: {self.gps.gps_data['lat']:.6f}", 0, 20)
             if "lon" in self.gps.gps_data and self.gps.gps_data["lon"] is not None:
-                self.display.text(f"Lon: {self.gps.gps_data['lon']:.6f}", 0, 24)
+                self.display.text(f"Lon: {self.gps.gps_data['lon']:.6f}", 0, 30)
             if "alt" in self.gps.gps_data and self.gps.gps_data["alt"] is not None:
-                self.display.text(f"Alt: {self.gps.gps_data['alt']}m", 0, 32)
+                self.display.text(f"Alt: {self.gps.gps_data['alt']}m", 0, 40)
             if "sats" in self.gps.gps_data:
-                self.display.text(f"Sats: {self.gps.gps_data['sats']}", 0, 40)
+                self.display.text(f"Sats: {self.gps.gps_data['sats']}", 0, 50)
         else:
-            self.display.text("Waiting for fix...", 0, 24)
+            self.display.text("Waiting for fix...", 0, 30)
 
         # Always display PPS if available
         if "pps" in self.gps.gps_data and self.gps.gps_data["pps"] is not None:
@@ -83,6 +87,7 @@ class DisplayHandler:
         self.display.show()
         self.mode_led.value(not self.mode_led.value())
 
+    # Entry point for distance mode
     def enter_distance_mode(self):
         if self.point_A is None:
             self.display_text("Distance Mode", "Set Point A", "Press SET")
@@ -94,6 +99,7 @@ class DisplayHandler:
             )
             self.display_text("Distance:", f"{distance:.2f} m", "SET to reset")
 
+    # Entry point for settings mode
     def enter_settings_mode(self):
         self.is_editing = False
         self.update_settings_display()
@@ -121,6 +127,7 @@ class DisplayHandler:
             self.display.text("Temp info N/A", 0, 50)
         self.display.show()
 
+    # Display two lines of text on the display
     def display_text(self, line1, line2, line3=None):
         self.display.fill(0)
         self.display.fill_rect(0, 0, 128, 48, 0)
@@ -130,6 +137,7 @@ class DisplayHandler:
             self.display.text(line3, 0, 24)
         self.display.show()
 
+    # Handle the SET button press per mode
     def handle_set_button(self):
         if self.current_mode == 1:
             self.set_distance_point()
@@ -166,11 +174,13 @@ class DisplayHandler:
         self.current_mode = (self.current_mode + 1) % len(self.MODES)
         self.enter_mode(self.current_mode)
 
+    # Handle navigation button per mode
     def handle_nav_button(self):
         if self.current_mode == 2:
             self.settings_index = (self.settings_index + 1) % len(self.SETTINGS_OPTIONS)
             self.update_settings_display()
 
+    # Toggle display power and enter deep sleep
     def toggle_display_power(self):
         if self.display_power_button is None:
             print("Error: Display power button not set")

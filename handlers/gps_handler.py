@@ -15,6 +15,8 @@ class GPSHandler:
             "alt": 0,
             "sats": 0,
             "pps": 0,
+            "utc_time": None,
+            "utc_date": None,
         }
         self.last_pps_time = None
 
@@ -102,6 +104,20 @@ class GPSHandler:
                                 self.error_led.value(1)
 
                             if self.gps_data["fix"] == "Valid" and len(data) >= 7:
+                                # Extract UTC time
+                                if data[1]:
+                                    utc_time = data[1]
+                                    self.gps_data[
+                                        "utc_time"
+                                    ] = f"{utc_time[:2]}:{utc_time[2:4]}:{utc_time[4:6]}"
+
+                                # Extract date
+                                if data[9]:
+                                    date = data[9]
+                                    self.gps_data[
+                                        "utc_date"
+                                    ] = f"20{date[4:6]}-{date[2:4]}-{date[:2]}"
+                                # Extract latitude and longitude
                                 latitude = self.convert_to_decimal(data[3])
                                 longitude = self.convert_to_decimal(data[5])
                                 if latitude is not None and longitude is not None:
