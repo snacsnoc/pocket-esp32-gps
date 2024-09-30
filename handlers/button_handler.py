@@ -33,12 +33,12 @@ class ButtonHandler:
         if not pin.value():
             self.display_handler.handle_set_button()
 
-    def handle_reset_button(self, pin):
+    def handle_reset_button(self):
         self.debounce_timer.init(
             mode=Timer.ONE_SHOT, period=50, callback=self.on_debounced_press
         )
 
-    def on_debounced_press(self, timer):
+    def on_debounced_press(self):
         if not self.reset_mode_button.value():
             self.display_handler.cycle_mode()
 
@@ -53,3 +53,11 @@ class ButtonHandler:
         time.sleep_ms(self.DEBOUNCE_DELAY)
         if not pin.value():
             self.display_handler.toggle_display_power()
+
+    # Disable pull-up resistors for buttons
+    # Saves power when not in use (before deep sleep)
+    def disable_pullups(self):
+        self.set_button.init(pull=None)
+        self.reset_mode_button.init(pull=None)
+        self.display_power_button.init(pull=None)
+        self.nav_button.init(pull=None)
