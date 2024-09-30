@@ -49,7 +49,7 @@ if reset_cause() == DEEPSLEEP_RESET:
     print("Woke from deep sleep")
     lightsleep(500)
     display_on = True
-    gps.gps_handler.init_gps()
+    gps.init_gps()
     display.poweron()
 
 
