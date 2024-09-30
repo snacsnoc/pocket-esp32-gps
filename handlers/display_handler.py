@@ -45,13 +45,13 @@ class DisplayHandler:
         if mode == 0:
             self.show_main_gps_display()
         elif mode == 1:
-            self.mode_led.value(1)
+            self.led_handler.set_mode_led(1)
             self.enter_distance_mode()
         elif mode == 2:
-            self.mode_led.value(1)
+            self.led_handler.set_mode_led(1)
             self.enter_settings_mode()
         elif mode == 3:
-            self.mode_led.value(1)
+            self.led_handler.set_mode_led(1)
             self.display_about()
 
     def show_main_gps_display(self):
