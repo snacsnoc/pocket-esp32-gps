@@ -28,6 +28,12 @@ class GPSHandler:
         # UART object
         self.uart1 = None
 
+        # Cache frequently used methods and objects
+        self.uart_readline = self.uart1.readline if self.uart1 else None
+        self.led_set_success = self.led_handler.set_success_led
+        self.led_set_warning = self.led_handler.set_warning_led
+        self.led_set_error = self.led_handler.set_error_led
+
     # Initialize UART1 to read from the GPS module
     def init_gps(self):
 
@@ -37,6 +43,7 @@ class GPSHandler:
             )
             if not self.uart1:
                 raise ValueError("Failed to initialize UART")
+            self.uart_readline = self.uart1.readline
         except Exception as e:
             print(f"UART initialization error: {e}")
             self.uart1 = None
@@ -57,6 +64,7 @@ class GPSHandler:
 
     # Convert DDDMM.MMMM to decimal degrees
     @staticmethod
+    @micropython.native
     def convert_to_decimal(degrees_minutes):
         if degrees_minutes and degrees_minutes.strip():
             try:
@@ -73,59 +81,51 @@ class GPSHandler:
     # Read GPS data
     # The @micropython.native decorator gives a 5% performance boost
     def read_gps(self):
-        if self.uart1 is None:
+        if not self.uart_readline:
             print("UART not initialized!")
             return self.gps_data
-        line = self.uart1.readline()
+
+        line = self.uart_readline()
         if line:
             try:
                 line_decoded = line.decode("ascii", "ignore").strip()
 
                 if line_decoded.startswith("$"):
                     data = line_decoded.split(",")
+                    # Cache locally for performance
+                    gps_data = self.gps_data
 
                     if "GPRMC" in line_decoded and len(data) >= 7:
-                        if len(data) >= 3:
-                            if data[2] == "A":
-                                self.gps_data["fix"] = "Valid"
-                                # Turn off error LED and turn on success LED
-                                self.led_handler.set_success_led(1)
-                                self.led_handler.set_warning_led(0)
-                                self.led_handler.set_error_led(0)
-                            else:
-                                self.gps_data["fix"] = "No Fix"
-                                self.led_handler.set_success_led(0)
-                                self.led_handler.set_warning_led(0)
-                                self.led_handler.set_error_led(1)
+                        fix = data[2] == "A"
+                        gps_data["fix"] = "Valid" if fix else "No Fix"
 
-                            if self.gps_data["fix"] == "Valid" and len(data) >= 7:
-                                # Extract UTC time
-                                if data[1]:
-                                    utc_time = data[1]
-                                    self.gps_data[
-                                        "utc_time"
-                                    ] = f"{utc_time[:2]}:{utc_time[2:4]}:{utc_time[4:6]}"
+                        self.led_set_success(1 if fix else 0)
+                        self.led_set_warning(0)
+                        self.led_set_error(0 if fix else 1)
 
-                                # Extract date
-                                if data[9]:
-                                    date = data[9]
-                                    self.gps_data[
-                                        "utc_date"
-                                    ] = f"20{date[4:6]}-{date[2:4]}-{date[:2]}"
-                                # Extract latitude and longitude
-                                latitude = self.convert_to_decimal(data[3])
-                                longitude = self.convert_to_decimal(data[5])
-                                if latitude is not None and longitude is not None:
-                                    self.gps_data["lat"] = latitude * (
-                                        -1 if data[4] == "S" else 1
-                                    )
-                                    self.gps_data["lon"] = longitude * (
-                                        -1 if data[6] == "W" else 1
-                                    )
+                        if fix and len(data) >= 7:
+                            # Extract UTC time and date
+                            gps_data[
+                                "utc_time"
+                            ] = f"{data[1][:2]}:{data[1][2:4]}:{data[1][4:6]}"
+                            gps_data[
+                                "utc_date"
+                            ] = f"20{data[9][4:6]}-{data[9][2:4]}-{data[9][:2]}"
+
+                            # Extract latitude and longitude
+                            latitude = self.convert_to_decimal(data[3])
+                            longitude = self.convert_to_decimal(data[5])
+                            if latitude is not None and longitude is not None:
+                                gps_data["lat"] = latitude * (
+                                    -1 if data[4] == "S" else 1
+                                )
+                                gps_data["lon"] = longitude * (
+                                    -1 if data[6] == "W" else 1
+                                )
 
                     elif "GPGGA" in line_decoded and len(data) >= 10:
-                        self.gps_data["alt"] = float(data[9]) if data[9] else 0
-                        self.gps_data["sats"] = int(data[7]) if data[7] else 0
+                        gps_data["alt"] = float(data[9]) if data[9] else 0
+                        gps_data["sats"] = int(data[7]) if data[7] else 0
 
                 else:
                     print(f"Invalid NMEA sentence: {line_decoded}")
@@ -133,11 +133,12 @@ class GPSHandler:
             except Exception as e:
                 print(f"Error processing GPS data: {str(e)[:50]}")
                 print(f"Raw line: {line}")
-        # Update fix status based on available data
+
+        # Fix status handling
         if self.gps_data["fix"] == "No Fix":
             if any(self.gps_data.get(key) for key in ["lat", "lon", "alt", "sats"]):
                 self.gps_data["fix"] = "Partial"
-                self.led_handler.set_warning_led(1)
+                self.led_set_warning(1)
                 print("Fix status updated to Partial")
 
         # Short sleep to prevent CPU hogging
