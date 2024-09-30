@@ -44,7 +44,7 @@ class DisplayHandler:
     def enter_mode(self, mode):
         self.current_mode = mode
         if mode == 0:
-            self.update_gps_display()
+            self.show_main_gps_display()
         elif mode == 1:
             self.mode_led.value(1)
             self.enter_distance_mode()
@@ -55,17 +55,19 @@ class DisplayHandler:
             self.mode_led.value(1)
             self.display_about()
 
-    # Update the GPS display
+    def show_main_gps_display(self):
+        self.update_gps_display()
+
+    def show_second_gps_display(self):
+        self.gps_second_display()
+
+    # Update the GPS main display
     def update_gps_display(self):
         self.display.fill(0)
         fix_status = self.gps.gps_data["fix"]
 
         # Display fix status
         self.display.text(f"Fix: {fix_status}", 0, 0)
-
-        # Display UTC time if available
-        if self.gps.gps_data["utc_time"]:
-            self.display.text(f"UTC: {self.gps.gps_data['utc_time']}", 0, 9)
 
         # Display available data based on fix status
         if fix_status == "Valid" or fix_status == "Partial":
@@ -80,12 +82,21 @@ class DisplayHandler:
         else:
             self.display.text("Waiting for fix...", 0, 30)
 
-        # Always display PPS if available
-        if "pps" in self.gps.gps_data and self.gps.gps_data["pps"] is not None:
-            self.display.text(f"PPS: {self.gps.gps_data['pps']}us", 0, 48)
-
         self.display.show()
         self.mode_led.value(not self.mode_led.value())
+
+    def gps_second_display(self):
+        self.display.fill(0)
+        # Display UTC time if available
+        if self.gps.gps_data["utc_time"] and self.gps.gps_data["utc_date"] is not None:
+            self.display.text(f"Time: {self.gps.gps_data['utc_time']}", 0, 0)
+            self.display.text(f"Date: {self.gps.gps_data['utc_date']}", 0, 9)
+        # Display PPS if available
+        if "pps" in self.gps.gps_data and self.gps.gps_data["pps"] is not None:
+            self.display.text(f"PPS: {self.gps.gps_data['pps']}us", 0, 48)
+        self.display.show()
+        # Wait for 2.5 seconds before returning to main display
+        utime.sleep(2.5)
 
     # Entry point for distance mode
     def enter_distance_mode(self):
@@ -176,7 +187,9 @@ class DisplayHandler:
 
     # Handle navigation button per mode
     def handle_nav_button(self):
-        if self.current_mode == 2:
+        if self.current_mode == 0:
+            self.gps_second_display()
+        elif self.current_mode == 2:
             self.settings_index = (self.settings_index + 1) % len(self.SETTINGS_OPTIONS)
             self.update_settings_display()
 
