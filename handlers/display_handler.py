@@ -8,12 +8,11 @@ from utils.haversine import haversine
 
 
 class DisplayHandler:
-    def __init__(self, gps, i2c):
+    def __init__(self, gps, i2c, led_handler):
         self.gps = gps
         self.display = ssd1306.SSD1306_I2C(128, 64, i2c)
         self.display_power_button = None
-        self.mode_led = Pin(12, Pin.OUT)
-        self.warning_led = Pin(25, Pin.OUT)
+        self.led_handler = led_handler
         self.current_mode = 0
         self.MODES = ["GPS Display", "Distance Calc", "Settings", "About"]
         self.settings_index = 0
@@ -83,7 +82,7 @@ class DisplayHandler:
             self.display.text("Waiting for fix...", 0, 30)
 
         self.display.show()
-        self.mode_led.value(not self.mode_led.value())
+        self.led_handler.toggle_mode_led()
 
     def gps_second_display(self):
         self.display.fill(0)
@@ -178,7 +177,7 @@ class DisplayHandler:
             self.enter_distance_mode()
         else:
             self.display_text("No GPS fix", "Try again later")
-            self.gps.error_led.value(1)
+            self.led_handler.set_error_led(1)
 
     # Cycle through modes
     def cycle_mode(self):
@@ -202,7 +201,7 @@ class DisplayHandler:
         if self.LCD_DISPLAY_SETTINGS["poweron"]:
             print("Preparing for deep sleep")
             self.display.poweroff()
-            self.warning_led.value(1)
+            self.led_handler.set_warning_led(1)
             self.LCD_DISPLAY_SETTINGS["poweron"] = False
 
             # Configure wake-up source
@@ -217,7 +216,7 @@ class DisplayHandler:
         else:
             print("Waking up from deep sleep")
             self.display.poweron()
-            self.warning_led.value(0)
+            self.led_handler.set_warning_led(0)
             self.LCD_DISPLAY_SETTINGS["poweron"] = True
             # Reinitialize the display
             self.gps.init_gps()

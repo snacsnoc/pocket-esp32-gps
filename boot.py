@@ -13,18 +13,19 @@ import lib.ssd1306 as ssd1306
 from handlers.gps_handler import GPSHandler
 from handlers.button_handler import ButtonHandler
 from handlers.display_handler import DisplayHandler
-
+from handlers.led_handler import LEDHandler
 
 POWERSAVE_BOOT = False
 
 # Initialize I2C and display
 i2c = I2C(scl=Pin(22), sda=Pin(21))
+led_handler = LEDHandler()
 display = ssd1306.SSD1306_I2C(128, 64, i2c)
 
-gps = GPSHandler()
+gps = GPSHandler(led_handler)
 gps.init_gps()
 # Initialize Display Handler
-display_handler = DisplayHandler(gps, i2c)
+display_handler = DisplayHandler(gps, i2c, led_handler)
 
 # Initialize Button Handler
 button_handler = ButtonHandler(gps, display_handler)

@@ -6,7 +6,8 @@ from machine import UART, Pin
 
 
 class GPSHandler:
-    def __init__(self):
+    def __init__(self, led_handler):
+        self.led_handler = led_handler
         # Global variables to store GPS data
         self.gps_data = {
             "fix": "No Fix",
@@ -19,12 +20,6 @@ class GPSHandler:
             "utc_date": None,
         }
         self.last_pps_time = None
-
-        # Initialize LEDs
-        self.success_led = Pin(26, Pin.OUT)
-        self.error_led = Pin(27, Pin.OUT)
-        self.success_led.value(0)
-        self.error_led.value(0)
 
         # Initialize PPS pin and attach interrupt
         self.pps_pin = Pin(4, Pin.IN)
@@ -45,10 +40,6 @@ class GPSHandler:
             print(f"UART initialization error: {e}")
             self.uart1 = None
             return
-
-        # Reset LED states
-        self.success_led.value(0)
-        self.error_led.value(0)
 
         # Attach interrupt to PPS pin
         self.pps_pin.irq(trigger=Pin.IRQ_RISING, handler=self.pps_handler)
@@ -96,12 +87,14 @@ class GPSHandler:
                             if data[2] == "A":
                                 self.gps_data["fix"] = "Valid"
                                 # Turn off error LED and turn on success LED
-                                self.error_led.value(0)
-                                self.success_led.value(1)
+                                self.led_handler.set_success_led(1)
+                                self.led_handler.set_warning_led(0)
+                                self.led_handler.set_error_led(0)
                             else:
                                 self.gps_data["fix"] = "No Fix"
-                                self.success_led.value(0)
-                                self.error_led.value(1)
+                                self.led_handler.set_success_led(0)
+                                self.led_handler.set_warning_led(0)
+                                self.led_handler.set_error_led(1)
 
                             if self.gps_data["fix"] == "Valid" and len(data) >= 7:
                                 # Extract UTC time
@@ -143,8 +136,7 @@ class GPSHandler:
         if self.gps_data["fix"] == "No Fix":
             if any(self.gps_data.get(key) for key in ["lat", "lon", "alt", "sats"]):
                 self.gps_data["fix"] = "Partial"
-                self.error_led.value(0)
-                self.success_led.value(1)
+                self.led_handler.set_warning_led(1)
                 print("Fix status updated to Partial")
 
         # Short sleep to prevent CPU hogging
