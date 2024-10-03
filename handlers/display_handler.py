@@ -3,6 +3,7 @@ from machine import Pin, I2C, freq, deepsleep
 import gc
 import os
 import esp32
+import esp
 import utime
 from utils.haversine import haversine
 
@@ -117,25 +118,33 @@ class DisplayHandler:
     def display_about(self):
         self.display.fill(0)
         self.display.text("Pocket ESP32 GPS", 0, 0)
-        self.display.text("v1.0 By Easton", 0, 10)
+        self.display.text("v1.0 By Easton", 0, 9)
         cpu_freq = freq() / 1_000_000
         self.display.text(f"CPU: {cpu_freq:.0f} MHz", 0, 20)
         free_ram = gc.mem_free() / 1024
-        self.display.text(f"Free RAM: {free_ram:.1f} KB", 0, 30)
+        self.display.text(f"RAM: {free_ram:.1f} KB", 0, 30)
+        try:
+            temp_fahrenheit = esp32.raw_temperature()
+            temp_celsius = (temp_fahrenheit - 32) * 5 / 9
+            self.display.text(f"Temp: {temp_celsius:.2f} C", 0, 40)
+        except:
+            self.display.text("Temp info N/A", 0, 40)
+        self.display.show()
+
+    def display_device_storage(self):
+        self.display.fill(0)
+        self.display.text("Device Storage", 0, 0)
         try:
             storage_info = os.statvfs("/")
             total_space = storage_info[0] * storage_info[2] / (1024 * 1024)
             free_space = storage_info[0] * storage_info[3] / (1024 * 1024)
+            flash_size = esp.flash_size()
             self.display.text(f"Storage: {free_space:.1f}/{total_space:.1f}MB", 0, 40)
+            self.display.text(f"Flash: {flash_size}B", 0, 50)
         except:
             self.display.text("Storage info N/A", 0, 40)
-        try:
-            temp_fahrenheit = esp32.raw_temperature()
-            temp_celsius = (temp_fahrenheit - 32) * 5 / 9
-            self.display.text(f"Temp: {temp_celsius:.2f} C", 0, 50)
-        except:
-            self.display.text("Temp info N/A", 0, 50)
         self.display.show()
+        utime.sleep(2.5)
 
     # Display two lines of text on the display
     def display_text(self, line1, line2, line3=None):
@@ -191,6 +200,8 @@ class DisplayHandler:
         elif self.current_mode == 2:
             self.settings_index = (self.settings_index + 1) % len(self.SETTINGS_OPTIONS)
             self.update_settings_display()
+        elif self.current_mode == 3:
+            self.display_device_storage()
 
     # Toggle display power and enter deep sleep
     def toggle_display_power(self):
