@@ -1,14 +1,7 @@
 # boot.py
 
-from machine import (
-    Pin,
-    I2C,
-    freq,
-    ADC,
-    lightsleep,
-    reset_cause,
-    DEEPSLEEP_RESET,
-)
+from machine import Pin, I2C, freq, ADC, lightsleep, reset_cause, DEEPSLEEP_RESET, RTC
+
 import lib.ssd1306 as ssd1306
 from handlers.gps_handler import GPSHandler
 from handlers.button_handler import ButtonHandler
@@ -29,6 +22,25 @@ display_handler = DisplayHandler(gps, i2c, led_handler)
 
 # Initialize Button Handler
 button_handler = ButtonHandler(gps, display_handler)
+
+# Get boot cycle count from RTC memory
+rtc = RTC()
+boot_count = rtc.memory()
+
+if boot_count is None or len(boot_count) == 0:
+    # First boot
+    boot_count = 1
+else:
+    boot_count = int(boot_count.decode()) + 1
+
+# Store the new boot count in RTC memory
+rtc.memory(str(boot_count).encode())
+
+print(f"Boot cycle: {boot_count}")
+
+# Show boot screen only on the first boot, not on wake from deep sleep
+if reset_cause() != DEEPSLEEP_RESET:
+    display_handler.display_boot_screen()
 
 
 if POWERSAVE_BOOT:

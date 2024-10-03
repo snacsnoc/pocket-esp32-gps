@@ -146,6 +146,30 @@ class DisplayHandler:
         self.display.show()
         utime.sleep(2.5)
 
+    # Initial boot screen
+    def display_boot_screen(self):
+        self.display.fill(0)
+        self.display.text("Pocket ESP32 GPS", 0, 9)
+        self.display.show()
+
+        # Simulate a booting progress bar animation
+        for i in range(0, 101, 10):  # Increase in steps of 10
+            self.display.fill_rect(10, 30, i, 10, 1)
+
+            # Clear the area where the percentage will be displayed
+            self.display.fill_rect(10, 45, 128, 10, 0)
+
+            self.display.text(f"Booting... {i}%", 10, 45)
+            self.display.show()
+            # Pause for animation
+            utime.sleep(0.25)
+
+        # Clear the progress bar once boot is complete
+        self.display.fill(0)
+        self.display.text("Boot Complete", 10, 30)
+        self.display.show()
+        utime.sleep(1)
+
     # Display two lines of text on the display
     def display_text(self, line1, line2, line3=None):
         self.display.fill(0)
