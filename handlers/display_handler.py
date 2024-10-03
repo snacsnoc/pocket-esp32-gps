@@ -9,11 +9,12 @@ from utils.haversine import haversine
 
 
 class DisplayHandler:
-    def __init__(self, gps, i2c, led_handler):
+    def __init__(self, gps, i2c, led_handler, settings_handler):
         self.gps = gps
         self.display = ssd1306.SSD1306_I2C(128, 64, i2c)
         self.display_power_button = None
         self.led_handler = led_handler
+        self.settings_handler = settings_handler
         self.current_mode = 0
         self.MODES = ["GPS Display", "Distance Calc", "Settings", "About"]
         self.settings_index = 0
@@ -21,21 +22,13 @@ class DisplayHandler:
         self.is_editing = False
         self.point_A = None
         self.point_B = None
-        self.LCD_DISPLAY_SETTINGS = {
-            "contrast": 1,
-            "invert": 0,
-            "poweroff": False,
-            "poweron": True,
-            "rotate": 0,
-        }
-        self.DEVICE_SETTINGS = {
-            "pwr_save": False,
-        }
         self.initialize_display()
 
     def initialize_display(self):
-        self.display.contrast(self.LCD_DISPLAY_SETTINGS["contrast"])
-        self.display.invert(self.LCD_DISPLAY_SETTINGS["invert"])
+        self.display.contrast(
+            self.settings_handler.get_setting("contrast", "LCD_SETTINGS")
+        )
+        self.display.invert(self.settings_handler.get_setting("invert", "LCD_SETTINGS"))
         self.enter_mode(self.current_mode)
 
     def set_display_power_button(self, button):
@@ -129,6 +122,7 @@ class DisplayHandler:
             self.display.text(f"Temp: {temp_celsius:.2f} C", 0, 40)
         except:
             self.display.text("Temp info N/A", 0, 40)
+        self.display.text("Press NAV btn for more", 0, 50)
         self.display.show()
 
     def display_device_storage(self):
@@ -252,7 +246,8 @@ class DisplayHandler:
             print("Waking up from deep sleep")
             self.display.poweron()
             self.led_handler.set_warning_led(0)
-            self.LCD_DISPLAY_SETTINGS["poweron"] = True
+            self.settings_handler.update_setting("poweron", True, "LCD_SETTINGS")
+
             # Reinitialize the display
             self.gps.init_gps()
             self.initialize_display()
@@ -260,37 +255,57 @@ class DisplayHandler:
     def update_settings_display(self):
         self.display.fill(0)
         self.display.text("Settings", 0, 0)
+
         start_index = max(0, self.settings_index - 1)
         end_index = min(len(self.SETTINGS_OPTIONS), start_index + 3)
+
         for i in range(start_index, end_index):
             option = self.SETTINGS_OPTIONS[i]
             prefix = ">" if i == self.settings_index else " "
             self.display.text(f"{prefix}{option}", 0, (i - start_index + 1) * 16)
+
+        # Display the current value of the selected setting
         if self.settings_index == 0:
-            value = f"Contrast: {self.LCD_DISPLAY_SETTINGS['contrast']}"
+            contrast = self.settings_handler.get_setting("contrast", "LCD_SETTINGS")
+            value = f"Contrast: {contrast}"
         elif self.settings_index == 1:
-            value = f"Invert: {'On' if self.LCD_DISPLAY_SETTINGS['invert'] else 'Off'}"
+            invert = self.settings_handler.get_setting("invert", "LCD_SETTINGS")
+            value = f"Invert: {'On' if invert else 'Off'}"
         elif self.settings_index == 2:
-            value = f"PWR Save: {'On' if self.DEVICE_SETTINGS['pwr_save'] else 'Off'}"
+            pwr_save = self.settings_handler.get_setting("pwr_save", "DEVICE_SETTINGS")
+            value = f"PWR Save: {'On' if pwr_save else 'Off'}"
         else:
             value = ""
+
         self.display.text(value, 0, 56)
         self.display.show()
 
     # Apply a setting change from the settings menu
     def apply_setting_change(self):
         if self.settings_index == 0:
-            self.LCD_DISPLAY_SETTINGS["contrast"] = (
-                self.LCD_DISPLAY_SETTINGS["contrast"] % 15
-            ) + 1
-            self.display.contrast(self.LCD_DISPLAY_SETTINGS["contrast"])
+            # Update contrast setting
+            current_contrast = self.settings_handler.get_setting(
+                "contrast", "LCD_SETTINGS"
+            )
+            new_contrast = (current_contrast % 15) + 1
+            self.settings_handler.update_setting(
+                "contrast", new_contrast, "LCD_SETTINGS"
+            )
+            self.display.contrast(new_contrast)
         elif self.settings_index == 1:
-            self.LCD_DISPLAY_SETTINGS["invert"] = not self.LCD_DISPLAY_SETTINGS[
-                "invert"
-            ]
-            self.display.invert(self.LCD_DISPLAY_SETTINGS["invert"])
+            # Toggle invert display
+            invert = self.settings_handler.get_setting("invert", "LCD_SETTINGS")
+            new_invert = not invert
+            self.settings_handler.update_setting("invert", new_invert, "LCD_SETTINGS")
+            self.display.invert(new_invert)
         elif self.settings_index == 2:
-            self.DEVICE_SETTINGS["pwr_save"] = not self.DEVICE_SETTINGS["pwr_save"]
+            # Toggle power save mode
+            pwr_save = self.settings_handler.get_setting("pwr_save", "DEVICE_SETTINGS")
+            new_pwr_save = not pwr_save
+            self.settings_handler.update_setting(
+                "pwr_save", new_pwr_save, "DEVICE_SETTINGS"
+            )
             # Valid settings are 20MHz, 40MHz, 80Mhz, 160MHz or 240MHz (ESP32)
-            freq(40000000 if self.DEVICE_SETTINGS["pwr_save"] else 240000000)
+            freq(40000000 if new_pwr_save else 240000000)
+
         self.is_editing = not self.is_editing

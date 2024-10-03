@@ -38,7 +38,7 @@ class ButtonHandler:
             mode=Timer.ONE_SHOT, period=50, callback=self.on_debounced_press
         )
 
-    def on_debounced_press(self):
+    def on_debounced_press(self, timer):
         if not self.reset_mode_button.value():
             self.display_handler.cycle_mode()
 
