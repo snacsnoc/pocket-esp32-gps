@@ -227,23 +227,23 @@ class DisplayHandler:
             print("Error: Display power button not set")
             return
 
-        if self.LCD_DISPLAY_SETTINGS["poweron"]:
+        if self.settings_handler.get_setting("poweron", "LCD_SETTINGS"):
             print("Preparing for deep sleep")
             self.display.poweroff()
             self.led_handler.set_warning_led(1)
-            self.LCD_DISPLAY_SETTINGS["poweron"] = False
+            self.settings_handler.update_setting("poweron", False, "LCD_SETTINGS")
 
             # Configure wake-up source
             esp32.wake_on_ext0(pin=self.display_power_button, level=0)
 
-            print("Entering deep sleep")
+            print("[DEBUG] Entering deep sleep")
             # Wait for 1 second to avoid immediate wake-up
             utime.sleep(1)
 
             # Enter deep sleep
             deepsleep()
         else:
-            print("Waking up from deep sleep")
+            print("[DEBUG] Waking up from deep sleep")
             self.display.poweron()
             self.led_handler.set_warning_led(0)
             self.settings_handler.update_setting("poweron", True, "LCD_SETTINGS")
