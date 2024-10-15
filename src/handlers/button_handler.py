@@ -10,10 +10,10 @@ class ButtonHandler:
         self.debounce_timer = Timer(1)
 
         # Initialize buttons
-        self.set_button = Pin(13, Pin.IN, Pin.PULL_UP)
-        self.reset_mode_button = Pin(14, Pin.IN, Pin.PULL_UP)
-        self.display_power_button = Pin(33, Pin.IN, Pin.PULL_UP)
-        self.nav_button = Pin(32, Pin.IN, Pin.PULL_UP)
+        self.set_button = Pin(27, Pin.IN, Pin.PULL_UP)
+        self.reset_mode_button = Pin(12, Pin.IN, Pin.PULL_UP)
+        self.display_power_button = Pin(13, Pin.IN, Pin.PULL_UP)
+        self.nav_button = Pin(14, Pin.IN, Pin.PULL_UP)
 
         # Attach interrupts
         self.set_button.irq(trigger=Pin.IRQ_FALLING, handler=self.handle_set_button)
@@ -33,13 +33,10 @@ class ButtonHandler:
         if not pin.value():
             self.display_handler.handle_set_button()
 
-    def handle_reset_button(self):
-        self.debounce_timer.init(
-            mode=Timer.ONE_SHOT, period=50, callback=self.on_debounced_press
-        )
-
-    def on_debounced_press(self, timer):
-        if not self.reset_mode_button.value():
+    def handle_reset_button(self, pin):
+        time.sleep_ms(self.DEBOUNCE_DELAY)
+        if not pin.value():
+            print("[DEBUG] Button still pressed after debounce")
             self.display_handler.cycle_mode()
 
     # Handle the navigation button
