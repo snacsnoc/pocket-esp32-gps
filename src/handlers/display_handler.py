@@ -165,11 +165,12 @@ class DisplayHandler:
         utime.sleep(1)
 
     # Display two lines of text on the display
-    def display_text(self, line1, line2, line3=None):
+    def display_text(self, line1, line2=None, line3=None):
         self.display.fill(0)
         self.display.fill_rect(0, 0, 128, 48, 0)
         self.display.text(line1, 0, 0)
-        self.display.text(line2, 0, 16)
+        if line2:
+            self.display.text(line2, 0, 16)
         if line3:
             self.display.text(line3, 0, 24)
         self.display.show()
@@ -230,6 +231,8 @@ class DisplayHandler:
             return
 
         if self.settings_handler.get_setting("poweron", "LCD_SETTINGS"):
+            self.display_text("Entering deep", "sleep in 1.5s")
+            utime.sleep(1.5)
             print("Preparing for deep sleep")
             self.display.poweroff()
             self.led_handler.set_warning_led(1)
@@ -239,6 +242,7 @@ class DisplayHandler:
             esp32.wake_on_ext0(pin=self.display_power_button, level=0)
 
             print("[DEBUG] Entering deep sleep")
+
             # Wait for 1 second to avoid immediate wake-up
             utime.sleep(1)
 
