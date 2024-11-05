@@ -22,9 +22,10 @@ class GPSHandler:
         }
         self.last_pps_time = None
 
-        # Initialize PPS pin and attach interrupt
+        # Initialize PPS and GPS power pin
         self.pps_pin = Pin(4, Pin.IN)
-
+        self.gps_power_pin = Pin(26, Pin.OUT)
+        self.gps_power_pin.value(0)
         # UART object
         self.uart1 = None
 
@@ -36,7 +37,6 @@ class GPSHandler:
 
     # Initialize UART1 to read from the GPS module
     def init_gps(self):
-
         try:
             self.uart1 = UART(
                 1, baudrate=9600, bits=8, parity=None, stop=1, tx=Pin(17), rx=Pin(16)
@@ -54,7 +54,7 @@ class GPSHandler:
 
         print("[DEBUG] GPS initialized")
 
-    """PPS signal handler to measure intervals between pulses."""
+    # PPS signal handler to measure intervals between pulses
 
     def pps_handler(self, pin):
         try:
