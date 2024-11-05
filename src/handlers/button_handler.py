@@ -17,7 +17,7 @@ class ButtonHandler:
         # Attach interrupts
         self.set_button.irq(trigger=Pin.IRQ_FALLING, handler=self.handle_set_button)
         self.reset_mode_button.irq(
-            trigger=Pin.IRQ_FALLING, handler=self.handle_reset_button
+            trigger=Pin.IRQ_FALLING, handler=self.handle_mode_button
         )
         self.display_power_button.irq(
             trigger=Pin.IRQ_FALLING, handler=self.handle_display_power
@@ -32,7 +32,7 @@ class ButtonHandler:
         if not pin.value():
             self.display_handler.handle_set_button()
 
-    def handle_reset_button(self, pin):
+    def handle_mode_button(self, pin):
         time.sleep_ms(self.DEBOUNCE_DELAY)
         if not pin.value():
             print("[DEBUG] Button still pressed after debounce")
