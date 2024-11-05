@@ -52,15 +52,21 @@ class GPSHandler:
         # Attach interrupt to PPS pin
         self.pps_pin.irq(trigger=Pin.IRQ_RISING, handler=self.pps_handler)
 
-        print("GPS initialized")
+        print("[DEBUG] GPS initialized")
+
+    """PPS signal handler to measure intervals between pulses."""
 
     def pps_handler(self, pin):
-        current_time = time.ticks_us()
-        if pin.value() == 1:
-            if self.last_pps_time is not None:
-                interval = time.ticks_diff(current_time, self.last_pps_time)
-                self.gps_data["pps"] = interval
-            self.last_pps_time = current_time
+        try:
+            current_time = time.ticks_us()
+            if pin.value() == 1:
+                if self.last_pps_time is not None:
+                    interval = time.ticks_diff(current_time, self.last_pps_time)
+                    self.gps_data["pps"] = interval
+                    print(f"[DEBUG] PPS interval: {interval} us")
+                self.last_pps_time = current_time
+        except Exception as e:
+            print(f"[ERROR] PPS handler error: {e}")
 
     # Convert DDDMM.MMMM to decimal degrees
     @staticmethod
@@ -82,7 +88,7 @@ class GPSHandler:
     # The @micropython.native decorator gives a 5% performance boost
     def read_gps(self):
         if not self.uart_readline:
-            print("UART not initialized!")
+            print("[DEBUG] UART not initialized!")
             return self.gps_data
 
         line = self.uart_readline()
