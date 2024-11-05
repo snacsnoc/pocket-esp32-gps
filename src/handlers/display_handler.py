@@ -181,7 +181,9 @@ class DisplayHandler:
             self.set_distance_point()
         elif self.current_mode == 2:
             self.apply_setting_change()
-        self.update_settings_display()
+        # SET button has no function on the main screen
+        if not self.current_mode == 0:
+            self.update_settings_display()
 
     # Calculate the distance between two points using the Haversine formula
     def set_distance_point(self):
