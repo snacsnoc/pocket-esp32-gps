@@ -7,7 +7,6 @@ class ButtonHandler:
         self.gps = gps
         self.display_handler = display_handler
         self.DEBOUNCE_DELAY = 150
-        self.debounce_timer = Timer(1)
 
         # Initialize buttons
         self.set_button = Pin(27, Pin.IN, Pin.PULL_UP)
