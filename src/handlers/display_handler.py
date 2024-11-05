@@ -222,7 +222,9 @@ class DisplayHandler:
             self.display_device_storage()
 
     # Toggle display power and enter deep sleep
-    def toggle_display_power(self):
+    def toggle_display_power(self, timer=None):
+        print(f"[DEBUG] Toggling display power with timer: {timer}")
+
         if self.display_power_button is None:
             print("Error: Display power button not set")
             return
