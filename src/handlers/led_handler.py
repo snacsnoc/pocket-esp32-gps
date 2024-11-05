@@ -4,8 +4,8 @@ import utime
 
 class LEDHandler:
     def __init__(self):
-        self.mode_led = Pin(23, Pin.OUT)
-        self.warning_led = Pin(18, Pin.OUT)
+        self.mode_led = Pin(18, Pin.OUT)
+        self.warning_led = Pin(23, Pin.OUT)
         self.success_led = Pin(19, Pin.OUT)
         self.error_led = Pin(5, Pin.OUT)
         # self.built_in_led = Pin(2, Pin.OUT)
