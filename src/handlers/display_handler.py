@@ -155,6 +155,22 @@ class DisplayHandler:
 
             self.display.text(f"Booting... {i}%", 10, 45)
             self.display.show()
+
+            # Cycle through the LEDs
+            if i % 20 == 0:
+                self.led_handler.set_warning_led(1)
+                utime.sleep(0.1)
+                self.led_handler.set_warning_led(0)
+                self.led_handler.set_success_led(1)
+                utime.sleep(0.1)
+                self.led_handler.set_success_led(0)
+                self.led_handler.set_mode_led(1)
+                utime.sleep(0.1)
+                self.led_handler.set_mode_led(0)
+                self.led_handler.set_error_led(1)
+                utime.sleep(0.1)
+                self.led_handler.set_error_led(0)
+
             # Pause for animation
             utime.sleep(0.25)
 
