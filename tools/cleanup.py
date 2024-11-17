@@ -15,5 +15,5 @@ def cleanup(base):
             os.remove(entry_path)
 
 
-cleanup("tiles_grayscale_bmp")  # Replace with your directory
-os.rmdir("tiles_optimized_bmp")
+cleanup("tiles_grayscale_bmp")
+os.rmdir("tiles_grayscale_bmp")
