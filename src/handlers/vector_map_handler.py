@@ -34,7 +34,9 @@ class VectorMap:
     def project_coordinates(self, lat, lon):
 
         x = (lon - self.bbox[0]) / (self.bbox[2] - self.bbox[0]) * self.display.width
-        y = (lat - self.bbox[1]) / (self.bbox[3] - self.bbox[1]) * self.display.height
+        y = (
+            1 - (lat - self.bbox[1]) / (self.bbox[3] - self.bbox[1])
+        ) * self.display.height
 
         # Apply zoom and clamp to display boundaries
         x = int(x * self.zoom_level)
@@ -78,9 +80,12 @@ class VectorMap:
 
     # Render all map features with the current zoom level
     def render(self):
-        self.display.fill(0)  # Clear the display
+        self.display.fill(0)
         for feature in self.features:
-            self.render_feature(feature)
+            if self.is_within_bounds(
+                feature, self.bbox
+            ):  # Filter features within bounds
+                self.render_feature(feature)
         self.display.show()
 
     # Render the user's location on the map
@@ -92,6 +97,43 @@ class VectorMap:
             self.display.line(x - 2, y + 2, x + 2, y + 2, 1)  # Base
             self.display.line(x + 2, y + 2, x, y - 2, 1)  # Right side
         self.display.show()
+
+    # Check if a feature's coordinates are within display bounds
+    def is_within_bounds(self, feature, bounds):
+        try:
+            geometry = feature.get("geometry", {})
+            geom_type = geometry.get("type", "")
+            coordinates = geometry.get("coordinates", [])
+
+            if geom_type in ["Polygon", "MultiPolygon"]:
+                for polygon in coordinates:
+                    rings = polygon if geom_type == "MultiPolygon" else [polygon]
+                    for ring in rings:
+                        for lon, lat in ring:
+                            if (
+                                bounds[0] <= lon <= bounds[2]
+                                and bounds[1] <= lat <= bounds[3]
+                            ):
+                                return True
+
+            elif geom_type in ["LineString", "MultiLineString"]:
+                lines = coordinates if geom_type == "MultiLineString" else [coordinates]
+                for line in lines:
+                    for lon, lat in line:
+                        if (
+                            bounds[0] <= lon <= bounds[2]
+                            and bounds[1] <= lat <= bounds[3]
+                        ):
+                            return True
+
+            elif geom_type == "Point":
+                lon, lat = coordinates
+                return bounds[0] <= lon <= bounds[2] and bounds[1] <= lat <= bounds[3]
+
+        except Exception as e:
+            print(f"[ERROR] Failed to check bounds for feature: {e}")
+
+        return False
 
     # Calculate a default bounding box around the user's location.
     @staticmethod
