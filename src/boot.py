@@ -21,87 +21,108 @@ from handlers.led_handler import LEDHandler
 
 
 # Initialize I2C and display
-i2c = I2C(scl=Pin(22), sda=Pin(21))
-led_handler = LEDHandler()
-display = ssd1306.SSD1306_I2C(128, 64, i2c)
 
-# Initialize Settings Handler
-settings_handler = SettingsHandler()
-# Initialize GPS module handler
-gps = GPSHandler(led_handler)
-gps.init_gps()
 
-# Initialize Display Handler
-display_handler = DisplayHandler(gps, i2c, led_handler, settings_handler)
+def initialize_peripherals():
+    i2c = I2C(scl=Pin(22), sda=Pin(21))
+    display = ssd1306.SSD1306_I2C(128, 64, i2c)
+    led_handler = LEDHandler()
+    return i2c, display, led_handler
 
-# Initialize Button Handler
-button_handler = ButtonHandler(gps, display_handler)
 
-# Get boot cycle count from RTC memory
-rtc = RTC()
-boot_count = rtc.memory()
+def initialize_handlers(i2c, led_handler):
+    settings_handler = SettingsHandler()
+    gps = GPSHandler(led_handler)
+    gps.init_gps()
+    display_handler = DisplayHandler(gps, i2c, led_handler, settings_handler)
+    button_handler = ButtonHandler(gps, display_handler)
+    return settings_handler, gps, display_handler, button_handler
 
-if boot_count is None or len(boot_count) == 0:
-    # First boot
-    boot_count = 1
-else:
-    boot_count = int(boot_count.decode()) + 1
 
-# Store the new boot count in RTC memory
-rtc.memory(str(boot_count).encode())
-
-print(f"Boot cycle: {boot_count}")
+def manage_boot_cycle():
+    # Get boot cycle count from RTC memory
+    rtc = RTC()
+    boot_count = rtc.memory()
+    if not boot_count:
+        boot_count = 1
+    else:
+        boot_count = int(boot_count.decode()) + 1
+    # Store the new boot count in RTC memory
+    rtc.memory(str(boot_count).encode())
+    print(f"[DEBUG] Boot cycle: {boot_count}")
+    return boot_count
 
 
 # Boot into power save mode instead of showing initial splash screen
-if settings_handler.get_setting("pwr_save_boot", "DEVICE_SETTINGS"):
-    # Set CPU frequency to 40MHz for power saving
-    freq(40000000)
-    # ADC power down
-    adc = ADC(0)
-    adc.atten(ADC.ATTN_0DB)
-    adc.width(ADC.WIDTH_9BIT)
+def enter_power_save_mode(settings_handler, display):
+    if settings_handler.get_setting("pwr_save_boot", "DEVICE_SETTINGS"):
+        # Set CPU frequency to 40MHz for power saving
+        freq(40000000)
+        # ADC power down
+        adc = ADC(0)
+        adc.atten(ADC.ATTN_0DB)
+        adc.width(ADC.WIDTH_9BIT)
+        display.poweroff()
+        display.contrast(1)
+        # Delay turning on display upon boot for 5 seconds
+        lightsleep(5000)
+        display.poweron()
 
-    # Delay turning on display upon boot for 5 seconds
-    display.poweroff()
-    display.contrast(1)
-    lightsleep(5000)
-    display.poweron()
 
 # Show boot screen only on the first boot, not on wake from deep sleep
-elif reset_cause() != DEEPSLEEP_RESET:
-    display_handler.display_boot_screen()
+def handle_boot_screen(display_handler):
+    if reset_cause() != DEEPSLEEP_RESET:
+        display_handler.display_boot_screen()
 
-if reset_cause() == DEEPSLEEP_RESET:
-    print("Woke from deep sleep")
-    lightsleep(500)
-    display_on = True
-    gps.init_gps()
-    display.poweron()
+
+def handle_deep_sleep(display, gps):
+    if reset_cause() == DEEPSLEEP_RESET:
+        print("Woke from deep sleep")
+        lightsleep(500)
+        gps.init_gps()
+        display.poweron()
 
 
 # Built-in ESP32 LED
-builtin_led = Pin(2, Pin.OUT)
-builtin_led.value(0)
+def initialize_builtin_led():
+    builtin_led = Pin(2, Pin.OUT)
+    builtin_led.value(0)
+    return builtin_led
 
-disp_timeout_timer = Timer(2)
 
-# Screen timeout timer
-disp_timeout_timer.init(
-    mode=Timer.ONE_SHOT,
-    period=settings_handler.get_setting("screen_timeout", "DEVICE_SETTINGS"),
-    callback=display_handler.toggle_display_power,
-)
+def setup_screen_timeout(settings_handler, display_handler):
+    disp_timer = Timer(2)
+    disp_timer.init(
+        mode=Timer.ONE_SHOT,
+        period=settings_handler.get_setting("screen_timeout", "DEVICE_SETTINGS"),
+        callback=display_handler.toggle_display_power,
+    )
+    return disp_timer
 
-while True:
-    try:
-        gps_data = gps.read_gps()
-        if gps_data:
+
+def main():
+    i2c, display, led_handler = initialize_peripherals()
+    (
+        settings_handler,
+        gps,
+        display_handler,
+        button_handler,
+    ) = initialize_handlers(i2c, led_handler)
+    manage_boot_cycle()
+    enter_power_save_mode(settings_handler, display)
+    handle_boot_screen(display_handler)
+    handle_deep_sleep(display, gps)
+    initialize_builtin_led()
+    setup_screen_timeout(settings_handler, display_handler)
+
+    while True:
+        try:
+            gps.read_gps()
             display_handler.enter_mode(display_handler.current_mode)
-        else:
-            print("No GPS data received")
-        lightsleep(100)
-    except Exception as e:
-        print(f"Error in main loop: {e}")
-        print(f"Error type: {type(e).__name__}")
-        print(f"Error args: {e.args}")
+            lightsleep(110)
+        except Exception as e:
+            print(f"Error: {e} ({type(e).__name__})")
+
+
+if __name__ == "__main__":
+    main()

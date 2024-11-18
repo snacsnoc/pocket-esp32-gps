@@ -12,6 +12,19 @@ from handlers.vector_map_handler import VectorMap
 
 
 class DisplayHandler:
+    MODES = [
+        "GPS Display",
+        "Map Display",
+        "Distance Calc",
+        "Settings",
+        "About",
+    ]
+    SETTINGS_OPTIONS = [
+        "Contrast",
+        "Invert Display",
+        "Power Save Mode",
+    ]
+
     def __init__(self, gps, i2c, led_handler, settings_handler):
         self.gps = gps
         self.display = ssd1306.SSD1306_I2C(128, 64, i2c)
@@ -19,15 +32,7 @@ class DisplayHandler:
         self.led_handler = led_handler
         self.settings_handler = settings_handler
         self.current_mode = 0
-        self.MODES = [
-            "GPS Display",
-            "Map Display",
-            "Distance Calc",
-            "Settings",
-            "About",
-        ]
         self.settings_index = 0
-        self.SETTINGS_OPTIONS = ["Contrast", "Invert Display", "Power Save Mode"]
         self.is_editing = False
         self.point_A = None
         self.point_B = None
@@ -61,28 +66,17 @@ class DisplayHandler:
 
     # Enter a mode and run the associated function
     def enter_mode(self, mode):
-
         self.current_mode = mode
-
-        if mode == 0:
-            gc.collect()
-            self.show_main_gps_display()
-        elif mode == 1:
-            self.led_handler.set_mode_led(1)
-            gc.collect()
-            self.display_map()
-        elif mode == 2:
-            self.led_handler.set_mode_led(1)
-            gc.collect()
-            self.enter_distance_mode()
-        elif mode == 3:
-            self.led_handler.set_mode_led(1)
-            gc.collect()
-            self.enter_settings_mode()
-        elif mode == 4:
-            self.led_handler.set_mode_led(1)
-            gc.collect()
-            self.display_about()
+        gc.collect()
+        mode_functions = {
+            0: self.show_main_gps_display,
+            1: self.display_map,
+            2: self.enter_distance_mode,
+            3: self.enter_settings_mode,
+            4: self.display_about,
+        }
+        self.led_handler.set_mode_led(1 if mode > 0 else 0)
+        mode_functions.get(mode, self.show_main_gps_display)()
 
     # Main GPS display
     def show_main_gps_display(self):
@@ -95,21 +89,23 @@ class DisplayHandler:
     # Update the GPS main display
     def update_gps_display(self):
         self.display.fill(0)
-        fix_status = self.gps.gps_data["fix"]
-
-        # Display fix status
+        fix_status = self.gps.gps_data.get("fix", "No Fix")
         self.display.text(f"Fix: {fix_status}", 0, 0)
 
-        # Display available data based on fix status
-        if fix_status == "Valid" or fix_status == "Partial":
-            if "lat" in self.gps.gps_data and self.gps.gps_data["lat"] is not None:
-                self.display.text(f"Lat: {self.gps.gps_data['lat']:.6f}", 0, 20)
-            if "lon" in self.gps.gps_data and self.gps.gps_data["lon"] is not None:
-                self.display.text(f"Lon: {self.gps.gps_data['lon']:.6f}", 0, 30)
-            if "alt" in self.gps.gps_data and self.gps.gps_data["alt"] is not None:
-                self.display.text(f"Alt: {self.gps.gps_data['alt']}m", 0, 40)
-            if "sats" in self.gps.gps_data:
-                self.display.text(f"Sats: {self.gps.gps_data['sats']}", 0, 50)
+        if fix_status in ["Valid", "Partial"]:
+            lat = self.gps.gps_data.get("lat")
+            lon = self.gps.gps_data.get("lon")
+            alt = self.gps.gps_data.get("alt")
+            sats = self.gps.gps_data.get("sats")
+
+            if lat is not None:
+                self.display.text(f"Lat: {lat:.6f}", 0, 20)
+            if lon is not None:
+                self.display.text(f"Lon: {lon:.6f}", 0, 30)
+            if alt is not None:
+                self.display.text(f"Alt: {alt}m", 0, 40)
+            if sats is not None:
+                self.display.text(f"Sats: {sats}", 0, 50)
         else:
             self.display.text("Waiting for fix...", 0, 30)
 
@@ -180,67 +176,6 @@ class DisplayHandler:
         self.display.show()
         utime.sleep(2.5)
 
-    # Initial boot screen
-    def display_boot_screen(self):
-        self.display.fill(0)
-        self.display.text("Pocket ESP32 GPS", 0, 9)
-        self.display.show()
-
-        # Simulate a booting progress bar animation
-        for i in range(0, 101, 10):  # Increase in steps of 10
-            self.display.fill_rect(10, 30, i, 10, 1)
-
-            # Clear the area where the percentage will be displayed
-            self.display.fill_rect(10, 45, 128, 10, 0)
-
-            self.display.text(f"Booting... {i}%", 10, 45)
-            self.display.show()
-
-            # Cycle through the LEDs
-            if i % 20 == 0:
-                self.led_handler.set_warning_led(1)
-                utime.sleep(0.1)
-                self.led_handler.set_warning_led(0)
-                self.led_handler.set_success_led(1)
-                utime.sleep(0.1)
-                self.led_handler.set_success_led(0)
-                self.led_handler.set_mode_led(1)
-                utime.sleep(0.1)
-                self.led_handler.set_mode_led(0)
-                self.led_handler.set_error_led(1)
-                utime.sleep(0.1)
-                self.led_handler.set_error_led(0)
-
-            # Pause for animation
-            utime.sleep(0.25)
-
-        # Clear the progress bar once boot is complete
-        self.display.fill(0)
-        self.display.text("Boot Complete", 10, 30)
-        self.display.show()
-        utime.sleep(1)
-
-    # Display two lines of text on the display
-    def display_text(self, line1, line2=None, line3=None):
-        self.display.fill(0)
-        self.display.fill_rect(0, 0, 128, 48, 0)
-        self.display.text(line1, 0, 0)
-        if line2:
-            self.display.text(line2, 0, 16)
-        if line3:
-            self.display.text(line3, 0, 24)
-        self.display.show()
-
-    # Handle the SET button press per mode
-    def handle_set_button(self):
-        if self.current_mode == 1:
-            self.set_distance_point()
-        elif self.current_mode == 3:
-            self.apply_setting_change()
-        # SET button has no function on the main screen
-        if not self.current_mode == 0:
-            self.update_settings_display()
-
     # Calculate the distance between two points using the Haversine formula
     def set_distance_point(self):
         lat, lon = self.gps.gps_data["lat"], self.gps.gps_data["lon"]
@@ -265,23 +200,6 @@ class DisplayHandler:
             self.display_text("No GPS fix", "Try again later")
             self.led_handler.set_error_led(1)
 
-    # Cycle through modes
-    def cycle_mode(self):
-        self.current_mode = (self.current_mode + 1) % len(self.MODES)
-        self.enter_mode(self.current_mode)
-
-    # Handle navigation button per mode
-    def handle_nav_button(self):
-        if self.current_mode == 0:
-            self.gps_second_display()
-        elif self.current_mode == 1:
-            self.update_map_zoom()
-        elif self.current_mode == 3:
-            self.settings_index = (self.settings_index + 1) % len(self.SETTINGS_OPTIONS)
-            self.update_settings_display()
-        elif self.current_mode == 4:
-            self.display_device_storage()
-
     # Display the map
     def show_map_display(self):
         self.display_map()
@@ -301,42 +219,6 @@ class DisplayHandler:
         print(f"[DEBUG] Setting zoom level to {self.zoom_level}")
         self.display_map()
         gc.collect()
-
-    # Toggle display power and enter deep sleep
-    def toggle_display_power(self, timer=None):
-        print(f"[DEBUG] Toggling display power with timer: {timer}")
-
-        if timer is not None:
-            print("[DEBUG] Error: no timer")
-            return
-
-        if self.settings_handler.get_setting("poweron", "LCD_SETTINGS"):
-            self.display_text("Entering deep", "sleep in 1.5s")
-            utime.sleep(1.5)
-            print("[DEBUG] Preparing for deep sleep")
-            self.display.poweroff()
-            self.led_handler.set_warning_led(1)
-            self.settings_handler.update_setting("poweron", False, "LCD_SETTINGS")
-
-            # Configure wake-up source
-            esp32.wake_on_ext0(pin=self.display_power_button, level=0)
-
-            print("[DEBUG] Entering deep sleep")
-
-            # Wait for 1 second to avoid immediate wake-up
-            utime.sleep(1)
-
-            # Enter deep sleep
-            deepsleep()
-        else:
-            print("[DEBUG] Waking up from deep sleep")
-            self.display.poweron()
-            self.led_handler.set_warning_led(0)
-            self.settings_handler.update_setting("poweron", True, "LCD_SETTINGS")
-
-            # Reinitialize the display
-            self.gps.init_gps()
-            self.initialize_display()
 
     def update_settings_display(self):
         self.display.fill(0)
@@ -399,14 +281,16 @@ class DisplayHandler:
     def display_map(self):
         lat = self.gps.gps_data.get("lat")
         lon = self.gps.gps_data.get("lon")
+        fix = self.gps.gps_data.get("fix")
 
-        if self.gps.gps_data.get("fix") == "No Fix":
-            print("[DEBUG] No GPS data available")
+        if fix == "No Fix" or lat is None or lon is None:
             self.display.fill(0)
             self.display_text("No GPS data", "available")
             self.display.show()
             utime.sleep(2)
-            self.current_mode = 0
+            # Transition to next screen so user can access other screens
+
+            self.current_mode = (self.current_mode + 1) % len(self.MODES)
             return
 
         # Free up memory before rendering
@@ -428,3 +312,119 @@ class DisplayHandler:
         self.vector_map.render_user_location(lat, lon)
 
         gc.collect()
+
+        # Utility methods
+
+    # Initial boot screen
+    def display_boot_screen(self):
+        self.display.fill(0)
+        self.display.text("Pocket ESP32 GPS", 0, 9)
+        self.display.show()
+
+        # Simulate a booting progress bar animation
+        for i in range(0, 101, 10):  # Increase in steps of 10
+            self.display.fill_rect(10, 30, i, 10, 1)
+
+            # Clear the area where the percentage will be displayed
+            self.display.fill_rect(10, 45, 128, 10, 0)
+
+            self.display.text(f"Booting... {i}%", 10, 45)
+            self.display.show()
+
+            # Cycle through the LEDs
+            if i % 20 == 0:
+                self.led_handler.set_warning_led(1)
+                utime.sleep(0.1)
+                self.led_handler.set_warning_led(0)
+                self.led_handler.set_success_led(1)
+                utime.sleep(0.1)
+                self.led_handler.set_success_led(0)
+                self.led_handler.set_mode_led(1)
+                utime.sleep(0.1)
+                self.led_handler.set_mode_led(0)
+                self.led_handler.set_error_led(1)
+                utime.sleep(0.1)
+                self.led_handler.set_error_led(0)
+
+            # Pause for animation
+            utime.sleep(0.25)
+
+        # Clear the progress bar once boot is complete
+        self.display.fill(0)
+        self.display.text("Boot Complete", 10, 30)
+        self.display.show()
+        utime.sleep(1)
+
+    # Display two lines of text on the display
+    def display_text(self, line1, line2=None, line3=None):
+        self.display.fill(0)
+        self.display.fill_rect(0, 0, 128, 48, 0)
+        self.display.text(line1, 0, 0)
+        if line2:
+            self.display.text(line2, 0, 16)
+        if line3:
+            self.display.text(line3, 0, 24)
+        self.display.show()
+
+    # Toggle display power and enter deep sleep
+    def toggle_display_power(self, timer=None):
+        print(f"[DEBUG] Toggling display power with timer: {timer}")
+
+        if timer is not None:
+            print("[DEBUG] Error: no timer")
+            return
+
+        if self.settings_handler.get_setting("poweron", "LCD_SETTINGS"):
+            self.display_text("Entering deep", "sleep in 1.5s")
+            utime.sleep(1.5)
+            print("[DEBUG] Preparing for deep sleep")
+            self.display.poweroff()
+            self.led_handler.set_warning_led(1)
+            self.settings_handler.update_setting("poweron", False, "LCD_SETTINGS")
+
+            # Configure wake-up source
+            esp32.wake_on_ext0(pin=self.display_power_button, level=0)
+
+            print("[DEBUG] Entering deep sleep")
+
+            # Wait for 1 second to avoid immediate wake-up
+            utime.sleep(1)
+
+            # Enter deep sleep
+            deepsleep()
+        else:
+            print("[DEBUG] Waking up from deep sleep")
+            self.display.poweron()
+            self.led_handler.set_warning_led(0)
+            self.settings_handler.update_setting("poweron", True, "LCD_SETTINGS")
+
+            # Reinitialize the display
+            self.gps.init_gps()
+            self.initialize_display()
+
+    # Cycle through modes
+    def cycle_mode(self):
+        self.current_mode = (self.current_mode + 1) % len(self.MODES)
+        self.enter_mode(self.current_mode)
+
+    # Handle navigation button per mode
+    def handle_nav_button(self):
+        if self.current_mode == 0:
+            self.gps_second_display()
+        elif self.current_mode == 1:
+            self.update_map_zoom()
+        elif self.current_mode == 3:
+            self.settings_index = (self.settings_index + 1) % len(self.SETTINGS_OPTIONS)
+            self.update_settings_display()
+        elif self.current_mode == 4:
+            self.display_device_storage()
+
+    # Handle the SET button press per mode
+    def handle_set_button(self):
+        if self.current_mode == 1:
+            self.set_distance_point()
+        elif self.current_mode == 3:
+            self.apply_setting_change()
+        # SET button has no function on the main screen
+        if not self.current_mode == 0:
+            self.update_settings_display()
