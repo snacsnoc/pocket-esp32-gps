@@ -1,6 +1,6 @@
 import lib.ssd1306 as ssd1306
 
-from machine import freq, deepsleep
+from machine import freq, deepsleep, lightsleep
 import gc
 import os
 import esp32
@@ -37,8 +37,13 @@ class DisplayHandler:
         self.point_A = None
         self.point_B = None
         self.vector_map_file = "/simplified_out_0229.geojson"
-        self.vector_map = None
         self.zoom_level = 2.0
+        self.prev_zoom_level = self.zoom_level
+        self.prev_lat = None
+        self.prev_lon = None
+        self.location_update_threshold = 25
+        self.vector_map = VectorMap(self.display, self.vector_map_file, bbox=None)
+        self.vector_map.set_zoom(self.zoom_level)
         self.initialize_display()
 
     def initialize_display(self):
@@ -116,14 +121,15 @@ class DisplayHandler:
         self.display.fill(0)
         # Display UTC time if available
         if self.gps.gps_data["utc_time"] and self.gps.gps_data["utc_date"] is not None:
-            self.display.text(f"Time: {self.gps.gps_data['utc_time']}", 0, 0)
-            self.display.text(f"Date: {self.gps.gps_data['utc_date']}", 0, 9)
+            self.display.text(f"Timezone: UTC", 0, 0)
+            self.display.text(f"Time: {self.gps.gps_data['utc_time']}", 0, 10)
+            self.display.text(f"Date: {self.gps.gps_data['utc_date']}", 0, 20)
         # Display PPS if available
         if "pps" in self.gps.gps_data and self.gps.gps_data["pps"] is not None:
             self.display.text(f"PPS: {self.gps.gps_data['pps']}us", 0, 48)
         self.display.show()
-        # Wait for 2.5 seconds before returning to main display
-        utime.sleep(2.5)
+        # Wait for 3 seconds before returning to main display
+        lightsleep(3000)
 
     # Entry point for distance mode
     def enter_distance_mode(self):
@@ -218,6 +224,7 @@ class DisplayHandler:
 
         print(f"[DEBUG] Setting zoom level to {self.zoom_level}")
         self.display_map()
+        self.prev_zoom_level = None
         gc.collect()
 
     def update_settings_display(self):
@@ -287,30 +294,46 @@ class DisplayHandler:
             self.display.fill(0)
             self.display_text("No GPS data", "available")
             self.display.show()
-            utime.sleep(2)
+            lightsleep(2000)
             # Transition to next screen so user can access other screens
-
             self.current_mode = (self.current_mode + 1) % len(self.MODES)
             return
 
         # Free up memory before rendering
         gc.collect()
 
-        if not self.vector_map:
-            self.initialize_map(lat, lon)
+        # Determine if we need to update the map
+        # Minimum distance threshold for location update
+        # is set in self.location_update_threshold in meters
+        location_changed = False
+        if self.prev_lat is None or self.prev_lon is None:
+            location_changed = True
+        else:
+            distance = haversine(self.prev_lat, self.prev_lon, lat, lon)
+            if distance > self.location_update_threshold:
+                location_changed = True
 
-        # Check if zoom level needs to be updated
-        if self.vector_map.zoom_level != self.zoom_level:
-            self.vector_map.set_zoom(self.zoom_level)
-            self.vector_map.render()
+        zoom_level_changed = self.zoom_level != self.prev_zoom_level
 
-        # Set zoom level and render map
-        self.vector_map.set_zoom(self.zoom_level)
+        if location_changed or zoom_level_changed:
+            # Recalculate bbox based on current location and zoom level
+            default_bbox = VectorMap.calculate_bbox_for_zoom(lat, lon, self.zoom_level)
+            print(f"[DEBUG] Updated BBox: {default_bbox}")
+            # Update the bbox in the existing VectorMap
+            self.vector_map.update_bbox(default_bbox)
+            # Update previous location and zoom level
+            self.prev_lat = lat
+            self.prev_lon = lon
+            self.prev_zoom_level = self.zoom_level
+
+        self.display.fill(0)
+        # Render the map features
         self.vector_map.render()
-
         # Render the user's location
         self.vector_map.render_user_location(lat, lon)
 
+        # Update the display __once__
+        self.display.show()
         gc.collect()
 
         # Utility methods

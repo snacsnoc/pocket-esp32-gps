@@ -27,20 +27,18 @@ class VectorMap:
         # Clamp zoom level
         self.zoom_level = max(0.1, min(zoom_level, 10.0))
 
-        # Re-render the map with the new zoom level
-        self.render()
-
     # Project latitude and longitude to display coordinates
     def project_coordinates(self, lat, lon):
 
-        x = (lon - self.bbox[0]) / (self.bbox[2] - self.bbox[0]) * self.display.width
-        y = (
-            1 - (lat - self.bbox[1]) / (self.bbox[3] - self.bbox[1])
-        ) * self.display.height
+        # Calculate the fraction of the coordinate within the bounding box
+        frac_x = (lon - self.bbox[0]) / (self.bbox[2] - self.bbox[0])
+        frac_y = (lat - self.bbox[1]) / (self.bbox[3] - self.bbox[1])
 
-        # Apply zoom and clamp to display boundaries
-        x = int(x * self.zoom_level)
-        y = int(y * self.zoom_level)
+        # Invert y-axis because display coordinates go from top to bottom
+        frac_y = 1 - frac_y
+
+        x = int(frac_x * self.display.width)
+        y = int(frac_y * self.display.height)
 
         x = max(0, min(self.display.width - 1, x))
         y = max(0, min(self.display.height - 1, y))
@@ -86,17 +84,30 @@ class VectorMap:
                 feature, self.bbox
             ):  # Filter features within bounds
                 self.render_feature(feature)
-        self.display.show()
+        # self.display.show() is called implicitly in the display_map() method in DisplayHandler
+
+    def draw_filled_circle(self, x0, y0, radius, color):
+        for y in range(-radius, radius + 1):
+            for x in range(-radius, radius + 1):
+                if x * x + y * y <= radius * radius:
+                    self.display.pixel(x0 + x, y0 + y, color)
+
+    # Update the bounding box for the map
+    def update_bbox(self, bbox):
+        self.bbox = bbox
 
     # Render the user's location on the map
     def render_user_location(self, lat, lon):
         x, y = self.project_coordinates(lat, lon)
         if 0 <= x < self.display.width and 0 <= y < self.display.height:
+            self.draw_filled_circle(x, y, 2, 1)
+
             # Draw a small triangle manually
             self.display.line(x, y - 2, x - 2, y + 2, 1)  # Left side
             self.display.line(x - 2, y + 2, x + 2, y + 2, 1)  # Base
             self.display.line(x + 2, y + 2, x, y - 2, 1)  # Right side
-        self.display.show()
+
+    # self.display.show() is called implicitly in the display_map() method in DisplayHandler
 
     # Check if a feature's coordinates are within display bounds
     def is_within_bounds(self, feature, bounds):
@@ -150,3 +161,15 @@ class VectorMap:
         bbox = [min_lon, min_lat, max_lon, max_lat]
 
         return bbox
+
+    @staticmethod
+    def calculate_bbox_for_zoom(lat, lon, zoom_level):
+        # Define a base size for the bbox (in degrees)
+        base_size = 0.1  # Adjust this value as needed
+        # Adjust the size based on the zoom level
+        size = base_size / zoom_level
+        min_lat = lat - size / 2
+        max_lat = lat + size / 2
+        min_lon = lon - size / 2
+        max_lon = lon + size / 2
+        return [min_lon, min_lat, max_lon, max_lat]
