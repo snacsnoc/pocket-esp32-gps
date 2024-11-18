@@ -31,7 +31,7 @@ class DisplayHandler:
         self.is_editing = False
         self.point_A = None
         self.point_B = None
-        self.vector_map_file = "/simplified.geojson"
+        self.vector_map_file = "/simplified_out_0229.geojson"
         self.vector_map = None
         self.zoom_level = 2.0
         self.initialize_display()
@@ -59,7 +59,9 @@ class DisplayHandler:
     def set_display_power_button(self, button):
         self.display_power_button = button
 
+    # Enter a mode and run the associated function
     def enter_mode(self, mode):
+
         self.current_mode = mode
 
         if mode == 0:
@@ -233,7 +235,7 @@ class DisplayHandler:
     def handle_set_button(self):
         if self.current_mode == 1:
             self.set_distance_point()
-        elif self.current_mode == 2:
+        elif self.current_mode == 3:
             self.apply_setting_change()
         # SET button has no function on the main screen
         if not self.current_mode == 0:
