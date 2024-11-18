@@ -26,7 +26,7 @@ class VectorMap:
     def set_zoom(self, zoom_level):
         # Clamp zoom level
         self.zoom_level = max(0.1, min(zoom_level, 10.0))
-        print(f"[DEBUG] Zoom level set to: {self.zoom_level}")
+
         # Re-render the map with the new zoom level
         self.render()
 
@@ -92,3 +92,19 @@ class VectorMap:
             self.display.line(x - 2, y + 2, x + 2, y + 2, 1)  # Base
             self.display.line(x + 2, y + 2, x, y - 2, 1)  # Right side
         self.display.show()
+
+    # Calculate a default bounding box around the user's location.
+    @staticmethod
+    def calculate_default_bbox(user_lat, user_lon):
+        lat_delta = 0.05  # ~5 km north/south
+        lon_delta = 0.05  # ~4-5 km east/west depending on latitude
+
+        # Calculate the bounding box
+        min_lat = user_lat - lat_delta
+        max_lat = user_lat + lat_delta
+        min_lon = user_lon - lon_delta
+        max_lon = user_lon + lon_delta
+
+        bbox = [min_lon, min_lat, max_lon, max_lat]
+
+        return bbox
