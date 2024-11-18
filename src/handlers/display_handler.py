@@ -1,11 +1,14 @@
 import lib.ssd1306 as ssd1306
-from machine import Pin, I2C, freq, deepsleep
+
+from machine import freq, deepsleep
 import gc
 import os
 import esp32
 import esp
 import utime
 from utils.haversine import haversine
+
+from handlers.vector_map_handler import VectorMap
 
 
 class DisplayHandler:
@@ -16,12 +19,21 @@ class DisplayHandler:
         self.led_handler = led_handler
         self.settings_handler = settings_handler
         self.current_mode = 0
-        self.MODES = ["GPS Display", "Distance Calc", "Settings", "About"]
+        self.MODES = [
+            "GPS Display",
+            "Map Display",
+            "Distance Calc",
+            "Settings",
+            "About",
+        ]
         self.settings_index = 0
         self.SETTINGS_OPTIONS = ["Contrast", "Invert Display", "Power Save Mode"]
         self.is_editing = False
         self.point_A = None
         self.point_B = None
+        self.vector_map_file = "/simplified.geojson"
+        self.vector_map = None
+        self.zoom_level = 2.0
         self.initialize_display()
 
     def initialize_display(self):
@@ -31,26 +43,50 @@ class DisplayHandler:
         self.display.invert(self.settings_handler.get_setting("invert", "LCD_SETTINGS"))
         self.enter_mode(self.current_mode)
 
+    # Initialize the map with a default bbox centered on the user's location.
+    def initialize_map(self, user_lat, user_lon):
+
+        # Calculate default boundary box based on user's location
+        default_bbox = VectorMap.calculate_default_bbox(user_lat, user_lon)
+        print(f"[DEBUG] Default BBox: {default_bbox}")
+
+        # Initialize the VectorMap with the calculated bbox
+        self.vector_map = VectorMap(
+            self.display, self.vector_map_file, bbox=default_bbox
+        )
+        self.vector_map.set_zoom(self.zoom_level)
+
     def set_display_power_button(self, button):
         self.display_power_button = button
 
     def enter_mode(self, mode):
         self.current_mode = mode
+
         if mode == 0:
+            gc.collect()
             self.show_main_gps_display()
         elif mode == 1:
             self.led_handler.set_mode_led(1)
-            self.enter_distance_mode()
+            gc.collect()
+            self.display_map()
         elif mode == 2:
             self.led_handler.set_mode_led(1)
-            self.enter_settings_mode()
+            gc.collect()
+            self.enter_distance_mode()
         elif mode == 3:
             self.led_handler.set_mode_led(1)
+            gc.collect()
+            self.enter_settings_mode()
+        elif mode == 4:
+            self.led_handler.set_mode_led(1)
+            gc.collect()
             self.display_about()
 
+    # Main GPS display
     def show_main_gps_display(self):
         self.update_gps_display()
 
+    # Secondary GPS display
     def show_second_gps_display(self):
         self.gps_second_display()
 
@@ -108,6 +144,7 @@ class DisplayHandler:
         self.is_editing = False
         self.update_settings_display()
 
+    # Display the about screen
     def display_about(self):
         self.display.fill(0)
         self.display.text("Pocket ESP32 GPS", 0, 0)
@@ -125,6 +162,7 @@ class DisplayHandler:
         self.display.text("Press NAV btn for more", 0, 50)
         self.display.show()
 
+    # Display device storage information
     def display_device_storage(self):
         self.display.fill(0)
         self.display.text("Device Storage", 0, 0)
@@ -234,24 +272,46 @@ class DisplayHandler:
     def handle_nav_button(self):
         if self.current_mode == 0:
             self.gps_second_display()
-        elif self.current_mode == 2:
+        elif self.current_mode == 1:
+            self.update_map_zoom()
+        elif self.current_mode == 3:
             self.settings_index = (self.settings_index + 1) % len(self.SETTINGS_OPTIONS)
             self.update_settings_display()
-        elif self.current_mode == 3:
+        elif self.current_mode == 4:
             self.display_device_storage()
+
+    # Display the map
+    def show_map_display(self):
+        self.display_map()
+
+    # Handle nav button press to change zoom level when on map display
+    def update_map_zoom(self):
+        # Toggle between 3.0, 2.0 and 1.0 and 0.5 zoom levels
+        if self.zoom_level == 3.0:
+            self.zoom_level = 2.0
+        elif self.zoom_level == 2.0:
+            self.zoom_level = 1.0
+        elif self.zoom_level == 1.0:
+            self.zoom_level = 0.5
+        else:
+            self.zoom_level = 3.0
+
+        print(f"[DEBUG] Setting zoom level to {self.zoom_level}")
+        self.display_map()
+        gc.collect()
 
     # Toggle display power and enter deep sleep
     def toggle_display_power(self, timer=None):
         print(f"[DEBUG] Toggling display power with timer: {timer}")
 
-        if self.display_power_button is None:
-            print("Error: Display power button not set")
+        if timer is not None:
+            print("[DEBUG] Error: no timer")
             return
 
         if self.settings_handler.get_setting("poweron", "LCD_SETTINGS"):
             self.display_text("Entering deep", "sleep in 1.5s")
             utime.sleep(1.5)
-            print("Preparing for deep sleep")
+            print("[DEBUG] Preparing for deep sleep")
             self.display.poweroff()
             self.led_handler.set_warning_led(1)
             self.settings_handler.update_setting("poweron", False, "LCD_SETTINGS")
@@ -333,3 +393,36 @@ class DisplayHandler:
             freq(40000000 if new_pwr_save else 240000000)
 
         self.is_editing = not self.is_editing
+
+    def display_map(self):
+        lat = self.gps.gps_data.get("lat")
+        lon = self.gps.gps_data.get("lon")
+
+        if self.gps.gps_data.get("fix") == "No Fix":
+            print("[DEBUG] No GPS data available")
+            self.display.fill(0)
+            self.display_text("No GPS data", "available")
+            self.display.show()
+            utime.sleep(2)
+            self.current_mode = 0
+            return
+
+        # Free up memory before rendering
+        gc.collect()
+
+        if not self.vector_map:
+            self.initialize_map(lat, lon)
+
+        # Check if zoom level needs to be updated
+        if self.vector_map.zoom_level != self.zoom_level:
+            self.vector_map.set_zoom(self.zoom_level)
+            self.vector_map.render()
+
+        # Set zoom level and render map
+        self.vector_map.set_zoom(self.zoom_level)
+        self.vector_map.render()
+
+        # Render the user's location
+        self.vector_map.render_user_location(lat, lon)
+
+        gc.collect()
