@@ -2,6 +2,7 @@
 
 
 from machine import Timer, deepsleep, lightsleep
+import gc
 import esp32
 
 
@@ -62,6 +63,7 @@ class PowerManager:
         self.display.poweroff()
         self.gps.set_update_interval(30000)  # 30 seconds
         self.reset_prolonged_inactivity_timer()
+        gc.collect()
 
     def exit_idle_mode(self):
         print("[DEBUG] Exiting Idle Mode")
@@ -71,6 +73,7 @@ class PowerManager:
         self.reset_inactivity_timer()
         if self.prolonged_inactivity_timer:
             self.prolonged_inactivity_timer.deinit()
+        gc.collect()
 
     def enter_deep_sleep(self):
         print("[DEBUG] Entering Deep Sleep Mode")

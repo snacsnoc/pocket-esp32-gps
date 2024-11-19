@@ -1,5 +1,4 @@
 from machine import Pin, lightsleep
-import time
 
 
 class ButtonHandler:

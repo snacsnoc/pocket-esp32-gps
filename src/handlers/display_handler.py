@@ -1,6 +1,6 @@
 import lib.ssd1306 as ssd1306
 
-from machine import freq, deepsleep, lightsleep, Timer
+from machine import freq, deepsleep, lightsleep
 import gc
 import os
 import esp32
@@ -79,9 +79,6 @@ class DisplayHandler:
         )
         self.vector_map.set_zoom(self.zoom_level)
 
-    def set_display_power_button(self, button):
-        self.display_power_button = button
-
     # Enter a mode and run the associated function
     def enter_mode(self, mode):
         self.current_mode = mode
@@ -134,7 +131,7 @@ class DisplayHandler:
         self.display.fill(0)
         # Display UTC time if available
         if self.gps.gps_data["utc_time"] and self.gps.gps_data["utc_date"] is not None:
-            self.display.text(f"Timezone: UTC", 0, 0)
+            self.display.text("Timezone: UTC", 0, 0)
             self.display.text(f"Time: {self.gps.gps_data['utc_time']}", 0, 10)
             self.display.text(f"Date: {self.gps.gps_data['utc_date']}", 0, 20)
         # Display PPS if available
@@ -174,8 +171,9 @@ class DisplayHandler:
             temp_fahrenheit = esp32.raw_temperature()
             temp_celsius = (temp_fahrenheit - 32) * 5 / 9
             self.display.text(f"Temp: {temp_celsius:.2f} C", 0, 40)
-        except:
+        except Exception as e:
             self.display.text("Temp info N/A", 0, 40)
+            print(f"[DEBUG] Error: {e}")
         self.display.text("Press NAV btn for more", 0, 50)
         self.display.show()
 
@@ -190,8 +188,9 @@ class DisplayHandler:
             flash_size = esp.flash_size()
             self.display.text(f"Storage: {free_space:.1f}/{total_space:.1f}MB", 0, 40)
             self.display.text(f"Flash: {flash_size}B", 0, 50)
-        except:
+        except Exception as e:
             self.display.text("Storage info N/A", 0, 40)
+            print(f"[DEBUG] Error: {e}")
         self.display.show()
         utime.sleep(2.5)
 
