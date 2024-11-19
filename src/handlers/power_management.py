@@ -1,7 +1,7 @@
 # src/handlers/power_management.py
 
 
-from machine import Timer, deepsleep
+from machine import Timer, deepsleep, lightsleep
 import esp32
 
 
@@ -51,6 +51,14 @@ class PowerManager:
             return
         print("[DEBUG] Entering Idle Mode")
         self.state = "idle"
+
+        self.display.fill(0)
+        self.display.fill_rect(0, 0, 128, 48, 0)
+        self.display.text("Entering", 0, 0)
+        self.display.text(f" {self.state} mode....", 0, 10)
+        self.display.show()
+        lightsleep(1500)
+
         self.display.poweroff()
         self.gps.set_update_interval(30000)  # 30 seconds
         self.reset_prolonged_inactivity_timer()
@@ -73,11 +81,12 @@ class PowerManager:
         deepsleep()
 
     def handle_user_interaction(self):
-        print(f"[DEBUG] User interaction detected. State: {self.state}")
+        print(f"[DEBUG] User interaction detected. Current state: {self.state}")
         if self.state == "idle":
             self.exit_idle_mode()
         else:
             self.reset_inactivity_timer()
 
+    # Set the display power button pin used for deep sleep
     def set_display_power_button(self, button):
         self.display_power_button = button
