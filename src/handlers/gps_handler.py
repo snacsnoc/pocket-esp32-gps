@@ -34,6 +34,11 @@ class GPSHandler:
         self.led_set_warning = self.led_handler.set_warning_led
         self.led_set_error = self.led_handler.set_error_led
 
+        self.update_interval = 1000
+
+    def set_update_interval(self, interval_ms):
+        self.update_interval = interval_ms
+
     # Initialize UART1 to read from the GPS module
     def init_gps(self):
         try:
@@ -62,7 +67,6 @@ class GPSHandler:
                 if self.last_pps_time is not None:
                     interval = time.ticks_diff(current_time, self.last_pps_time)
                     self.gps_data["pps"] = interval
-                    print(f"[DEBUG] PPS interval: {interval} us")
                 self.last_pps_time = current_time
         except Exception as e:
             print(f"[ERROR] PPS handler error: {e}")
@@ -97,7 +101,7 @@ class GPSHandler:
         try:
             line_decoded = line.decode("ascii", "ignore").strip()
             if not line_decoded.startswith("$"):
-                print(f"[DEBUG] Invalid NMEA sentence: {line_decoded}")
+                # print(f"[DEBUG] Invalid NMEA sentence: {line_decoded}")
                 return
             data = line_decoded.split(",")
             # Cache locally for performance
@@ -133,7 +137,7 @@ class GPSHandler:
 
         except Exception as e:
             print(f"[ERROR] Error processing GPS data: {str(e)}")
-            print(f"[DEBUG] Raw line: {line}")
+            # print(f"[DEBUG] Raw line: {line}")
 
         # Fix status handling
         if self.gps_data["fix"] == "No Fix":
@@ -143,5 +147,6 @@ class GPSHandler:
 
         # Short sleep to prevent CPU hogging
         # Do not remove this sleep
-        time.sleep(0.3)
+        time.sleep_ms(self.update_interval)
+        print(f"[DEBUG] Update interval: {self.update_interval} ms")
         return self.gps_data

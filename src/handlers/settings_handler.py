@@ -16,7 +16,7 @@ class SettingsHandler:
             },
             "DEVICE_SETTINGS": {
                 "pwr_save": False,
-                "screen_timeout": 10000,
+                "screen_timeout": 30000,
                 "pwr_save_boot": False,
             },
             "current_mode": 0,

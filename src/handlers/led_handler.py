@@ -1,4 +1,4 @@
-from machine import Pin
+from machine import Pin, lightsleep
 import utime
 
 
@@ -34,6 +34,6 @@ class LEDHandler:
     def blink_led(self, led, times=1, on_time=100, off_time=100):
         for _ in range(times):
             led.value(1)
-            utime.sleep_ms(on_time)
+            lightsleep(on_time)
             led.value(0)
-            utime.sleep_ms(off_time)
+            lightsleep(off_time)

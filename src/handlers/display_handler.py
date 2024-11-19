@@ -1,6 +1,6 @@
 import lib.ssd1306 as ssd1306
 
-from machine import freq, deepsleep, lightsleep
+from machine import freq, deepsleep, lightsleep, Timer
 import gc
 import os
 import esp32
@@ -9,6 +9,8 @@ import utime
 from utils.haversine import haversine
 
 from handlers.vector_map_handler import VectorMap
+
+from handlers.power_management import PowerManager
 
 
 class DisplayHandler:
@@ -31,6 +33,11 @@ class DisplayHandler:
         self.display_power_button = None
         self.led_handler = led_handler
         self.settings_handler = settings_handler
+        self.power_manager = PowerManager(
+            self.display, self.gps, self.settings_handler, self.led_handler
+        )
+        self.power_manager.set_display_power_button(self.display_power_button)
+
         self.current_mode = 0
         self.settings_index = 0
         self.is_editing = False
@@ -45,6 +52,12 @@ class DisplayHandler:
         self.vector_map = VectorMap(self.display, self.vector_map_file, bbox=None)
         self.vector_map.set_zoom(self.zoom_level)
         self.initialize_display()
+
+    def set_display_power_button(self, button):
+        self.power_manager.set_display_power_button(button)
+
+    def handle_user_interaction(self):
+        self.power_manager.handle_user_interaction()
 
     def initialize_display(self):
         self.display.contrast(
