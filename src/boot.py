@@ -122,8 +122,9 @@ def main():
 
     while True:
         try:
-            gps.read_gps()
             display_handler.enter_mode(display_handler.current_mode)
+            if display_handler.current_mode in [0, 1, 2]:  # Modes requiring GPS
+                gps.read_gps()
             lightsleep(110)
         except Exception as e:
             print(f"Error: {e} ({type(e).__name__})")

@@ -1,6 +1,6 @@
 import lib.ssd1306 as ssd1306
 
-from machine import freq, deepsleep, lightsleep
+from machine import freq, lightsleep
 import gc
 import os
 import esp32
@@ -66,23 +66,9 @@ class DisplayHandler:
         self.display.invert(self.settings_handler.get_setting("invert", "LCD_SETTINGS"))
         self.enter_mode(self.current_mode)
 
-    # Initialize the map with a default bbox centered on the user's location.
-    def initialize_map(self, user_lat, user_lon):
-
-        # Calculate default boundary box based on user's location
-        default_bbox = VectorMap.calculate_default_bbox(user_lat, user_lon)
-        print(f"[DEBUG] Default BBox: {default_bbox}")
-
-        # Initialize the VectorMap with the calculated bbox
-        self.vector_map = VectorMap(
-            self.display, self.vector_map_file, bbox=default_bbox
-        )
-        self.vector_map.set_zoom(self.zoom_level)
-
     # Enter a mode and run the associated function
     def enter_mode(self, mode):
         self.current_mode = mode
-        gc.collect()
         mode_functions = {
             0: self.show_main_gps_display,
             1: self.display_map,
@@ -92,6 +78,7 @@ class DisplayHandler:
         }
         self.led_handler.set_mode_led(1 if mode > 0 else 0)
         mode_functions.get(mode, self.show_main_gps_display)()
+        gc.collect()
 
     # Main GPS display
     def show_main_gps_display(self):
@@ -100,6 +87,7 @@ class DisplayHandler:
     # Secondary GPS display
     def show_second_gps_display(self):
         self.gps_second_display()
+        gc.collect()
 
     # Update the GPS main display
     def update_gps_display(self):
@@ -217,6 +205,8 @@ class DisplayHandler:
         else:
             self.display_text("No GPS fix", "Try again later")
             self.led_handler.set_error_led(1)
+
+        gc.collect()
 
     # Display the map
     def show_map_display(self):
@@ -337,6 +327,7 @@ class DisplayHandler:
             self.prev_lat = lat
             self.prev_lon = lon
             self.prev_zoom_level = self.zoom_level
+            gc.collect()
 
         self.display.fill(0)
         # Render the map features
