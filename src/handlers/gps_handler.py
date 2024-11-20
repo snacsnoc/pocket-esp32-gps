@@ -16,6 +16,7 @@ class GPSHandler:
             "alt": 0,
             "sats": 0,
             "pps": 0,
+            "hdop": 0,
             "utc_time": None,
             "utc_date": None,
         }
@@ -139,10 +140,37 @@ class GPSHandler:
                         gps_data["lat"] = latitude * (-1 if data[4] == "S" else 1)
                         gps_data["lon"] = longitude * (-1 if data[6] == "W" else 1)
 
+                    # Extract speed and course if available
+                    gps_data["speed_knots"] = float(data[7]) if data[7] else 0
+                    gps_data["course"] = float(data[8]) if data[8] else None
+
             elif line_decoded.startswith("$GPGGA") and len(data) >= 10:
                 gps_data["alt"] = float(data[9]) if data[9] else 0
                 gps_data["sats"] = int(data[7]) if data[7] else 0
+                #  Horizontal dilution of precision (accuracy indicator)
+                gps_data["hdop"] = float(data[8]) if data[8] else None
 
+            elif line_decoded.startswith("$GPGSV") and len(data) >= 4:
+                # Extract satellite information
+                gps_data["satellites_in_view"] = int(data[3]) if data[3] else 0
+                if "satellites" not in gps_data:
+                    gps_data["satellites"] = []
+                for i in range(4, len(data) - 4, 4):
+                    try:
+                        sat_id = int(data[i])
+                        elevation = int(data[i + 1]) if data[i + 1] else None
+                        azimuth = int(data[i + 2]) if data[i + 2] else None
+                        snr = int(data[i + 3]) if data[i + 3] else None
+                        gps_data["satellites"].append(
+                            {
+                                "id": sat_id,
+                                "elevation": elevation,
+                                "azimuth": azimuth,
+                                "snr": snr,
+                            }
+                        )
+                    except (ValueError, IndexError):
+                        continue
         except Exception as e:
             print(f"[ERROR] Error processing GPS data: {str(e)}")
             print(f"[DEBUG] Raw line: {line}")
@@ -164,5 +192,5 @@ class GPSHandler:
             lightsleep(low_power_sleep)  # Lightsleep for remaining interval
 
         print(f"[DEBUG] Update interval: {self.update_interval} ms")
-        print(f"[DEBUG] Update interval: {self.update_interval} ms")
+        print(f"[DEBUG] GPS data: {self.gps_data}")
         return self.gps_data

@@ -122,6 +122,11 @@ class DisplayHandler:
             self.display.text("Timezone: UTC", 0, 0)
             self.display.text(f"Time: {self.gps.gps_data['utc_time']}", 0, 10)
             self.display.text(f"Date: {self.gps.gps_data['utc_date']}", 0, 20)
+
+        # Display horizontal dilution of precision if available
+        if "hdop" in self.gps.gps_data and self.gps.gps_data["hdop"] is not None:
+            self.display.text(f"hdop: {self.gps.gps_data['hdop']}m", 0, 30)
+
         # Display PPS if available
         if "pps" in self.gps.gps_data and self.gps.gps_data["pps"] is not None:
             self.display.text(f"PPS: {self.gps.gps_data['pps']}us", 0, 48)
