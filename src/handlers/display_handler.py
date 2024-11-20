@@ -405,8 +405,11 @@ class DisplayHandler:
     def toggle_display_power(self, timer=None):
         print(f"[DEBUG] Toggling display power with timer: {timer}")
         if self.power_manager.state == "deep_sleep":
+            # Debounce to avoid immediate wake-up
+            utime.sleep_ms(500)
             self.power_manager.wake_from_deep_sleep()
         else:
+            utime.sleep_ms(300)
             self.power_manager.enter_deep_sleep()
 
     # Cycle through modes
