@@ -2,7 +2,7 @@
 
 import time
 
-from machine import UART, Pin
+from machine import UART, Pin, lightsleep
 
 
 class GPSHandler:
@@ -41,6 +41,7 @@ class GPSHandler:
 
     # Initialize UART1 to read from the GPS module
     def init_gps(self):
+        self.power_on()
         try:
             self.uart1 = UART(
                 1, baudrate=9600, bits=8, parity=None, stop=1, tx=Pin(17), rx=Pin(16)
@@ -59,9 +60,11 @@ class GPSHandler:
         print("[DEBUG] GPS initialized")
 
     def power_off(self):
+        print("[DEBUG] Powering off GPS")
         self.gps_power_pin.value(1)
 
     def power_on(self):
+        print("[DEBUG] Powering on GPS")
         self.gps_power_pin.value(0)
 
     # PPS signal handler to measure intervals between pulses
@@ -142,7 +145,7 @@ class GPSHandler:
 
         except Exception as e:
             print(f"[ERROR] Error processing GPS data: {str(e)}")
-            # print(f"[DEBUG] Raw line: {line}")
+            print(f"[DEBUG] Raw line: {line}")
 
         # Fix status handling
         if self.gps_data["fix"] == "No Fix":
@@ -152,6 +155,14 @@ class GPSHandler:
 
         # Short sleep to prevent CPU hogging
         # Do not remove this sleep
-        time.sleep_ms(self.update_interval)
+        # Split long intervals into smaller chunks
+        active_sleep = max(self.update_interval - 100, 0)  # Active processing time
+        low_power_sleep = min(self.update_interval, 100)  # Light sleep duration
+
+        time.sleep_ms(active_sleep)  # Active sleep to maintain timers
+        if low_power_sleep > 0:
+            lightsleep(low_power_sleep)  # Lightsleep for remaining interval
+
+        print(f"[DEBUG] Update interval: {self.update_interval} ms")
         print(f"[DEBUG] Update interval: {self.update_interval} ms")
         return self.gps_data

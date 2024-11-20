@@ -404,38 +404,10 @@ class DisplayHandler:
     # Toggle display power and enter deep sleep
     def toggle_display_power(self, timer=None):
         print(f"[DEBUG] Toggling display power with timer: {timer}")
-
-        if timer is not None:
-            print("[DEBUG] Error: no timer")
-            return
-
-        if self.settings_handler.get_setting("poweron", "LCD_SETTINGS"):
-            self.display_text("Entering deep", "sleep in 1.5s")
-            utime.sleep(1.5)
-            print("[DEBUG] Preparing for deep sleep")
-            self.display.poweroff()
-            self.led_handler.set_warning_led(1)
-            self.settings_handler.update_setting("poweron", False, "LCD_SETTINGS")
-
-            # Configure wake-up source
-            esp32.wake_on_ext0(pin=self.display_power_button, level=0)
-
-            print("[DEBUG] Entering deep sleep")
-
-            # Wait for 1 second to avoid immediate wake-up
-            utime.sleep(1)
-
-            # Enter deep sleep
-            deepsleep()
+        if self.power_manager.state == "deep_sleep":
+            self.power_manager.wake_from_deep_sleep()
         else:
-            print("[DEBUG] Waking up from deep sleep")
-            self.display.poweron()
-            self.led_handler.set_warning_led(0)
-            self.settings_handler.update_setting("poweron", True, "LCD_SETTINGS")
-
-            # Reinitialize the display
-            self.gps.init_gps()
-            self.initialize_display()
+            self.power_manager.enter_deep_sleep()
 
     # Cycle through modes
     def cycle_mode(self):

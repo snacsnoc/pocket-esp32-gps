@@ -79,12 +79,10 @@ def handle_boot_screen(display_handler):
         display_handler.display_boot_screen()
 
 
-def handle_deep_sleep(display, gps):
+def handle_deep_sleep(power_manager):
     if reset_cause() == DEEPSLEEP_RESET:
-        print("Woke from deep sleep")
-        lightsleep(500)
-        gps.init_gps()
-        display.poweron()
+        print("[DEBUG] Waking from deep sleep")
+        power_manager.wake_from_deep_sleep()
 
 
 # Built-in ESP32 LED
@@ -94,12 +92,12 @@ def initialize_builtin_led():
     return builtin_led
 
 
-def setup_screen_timeout(settings_handler, display_handler):
+def setup_screen_timeout(settings_handler, power_manager):
     disp_timer = Timer(2)
     disp_timer.init(
         mode=Timer.ONE_SHOT,
-        period=settings_handler.get_setting("screen_timeout", "DEVICE_SETTINGS"),
-        callback=display_handler.toggle_display_power,
+        period=settings_handler.get_setting("screen_timeout_ms", "DEVICE_SETTINGS"),
+        callback=lambda t: power_manager.enter_idle_mode(),
     )
     return disp_timer
 
@@ -112,12 +110,15 @@ def main():
         display_handler,
         button_handler,
     ) = initialize_handlers(i2c, led_handler, display_power_button)
+    power_manager = display_handler.power_manager
     manage_boot_cycle()
     enter_power_save_mode(settings_handler, display)
+
+    handle_deep_sleep(power_manager)
+
     handle_boot_screen(display_handler)
-    handle_deep_sleep(display, gps)
     initialize_builtin_led()
-    setup_screen_timeout(settings_handler, display_handler)
+    setup_screen_timeout(settings_handler, power_manager)
 
     while True:
         try:
