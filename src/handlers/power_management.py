@@ -14,9 +14,10 @@ class PowerManager:
         self.led_handler = led_handler  # Not used
 
         self.state = "active"
-        self.idle_timeout = self.settings_handler.get_setting(
+        self.idle_timeout_ms = self.settings_handler.get_setting(
             "screen_timeout", "DEVICE_SETTINGS"
         )
+        self.deepsleep_timeout_ms = 600000  # 10 minutes
         self.inactivity_timer = Timer(-1)
         self.prolonged_inactivity_timer = Timer(-1)
 
@@ -28,21 +29,23 @@ class PowerManager:
     def init_timers(self):
         self.reset_inactivity_timer()
 
+    # Used for idle mode
     def reset_inactivity_timer(self):
         if self.inactivity_timer:
             self.inactivity_timer.deinit()
-        print(f"[DEBUG] Resetting inactivity timer. Timeout: {self.idle_timeout} ms")
+        print(f"[DEBUG] Resetting inactivity timer. Timeout: {self.idle_timeout_ms} ms")
         self.inactivity_timer.init(
-            period=self.idle_timeout,
+            period=self.idle_timeout_ms,
             mode=Timer.ONE_SHOT,
             callback=lambda t: self.enter_idle_mode(),
         )
 
+    # Used for deep sleep mode
     def reset_prolonged_inactivity_timer(self):
         if self.prolonged_inactivity_timer:
             self.prolonged_inactivity_timer.deinit()
         self.prolonged_inactivity_timer.init(
-            period=300000,  # 5 minutes
+            period=self.deepsleep_timeout_ms,  # 10 minutes
             mode=Timer.ONE_SHOT,
             callback=lambda t: self.enter_deep_sleep(),
         )
@@ -79,7 +82,7 @@ class PowerManager:
         print("[DEBUG] Entering Deep Sleep Mode")
         self.state = "deep_sleep"
         self.display.poweroff()
-        self.gps.poweroff()
+        self.gps.power_off()
         esp32.wake_on_ext0(pin=self.display_power_button, level=0)
         deepsleep()
 

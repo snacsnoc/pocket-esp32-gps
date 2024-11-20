@@ -58,8 +58,13 @@ class GPSHandler:
 
         print("[DEBUG] GPS initialized")
 
-    # PPS signal handler to measure intervals between pulses
+    def power_off(self):
+        self.gps_power_pin.value(1)
 
+    def power_on(self):
+        self.gps_power_pin.value(0)
+
+    # PPS signal handler to measure intervals between pulses
     def pps_handler(self, pin):
         try:
             current_time = time.ticks_us()
