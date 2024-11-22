@@ -288,7 +288,7 @@ class DisplayHandler:
                 "pwr_save", new_pwr_save, "DEVICE_SETTINGS"
             )
             # Valid settings are 20MHz, 40MHz, 80Mhz, 160MHz or 240MHz (ESP32)
-            freq(40000000 if new_pwr_save else 240000000)
+            freq(40000000 if new_pwr_save else 160000000)
 
         self.is_editing = not self.is_editing
 
