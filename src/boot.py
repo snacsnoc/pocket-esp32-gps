@@ -17,7 +17,6 @@ from handlers.settings_handler import SettingsHandler
 from handlers.button_handler import ButtonHandler
 from handlers.display_handler import DisplayHandler
 from handlers.led_handler import LEDHandler
-from handlers.power_management import PowerManager
 
 
 def initialize_handlers():
