@@ -36,6 +36,7 @@ class GPSHandler:
         self.led_set_error = self.led_handler.set_error_led
 
         self.update_interval = 1000
+        self.DEBUG = False
 
     def set_update_interval(self, interval_ms):
         self.update_interval = interval_ms
@@ -57,11 +58,12 @@ class GPSHandler:
 
         # Attach interrupt to PPS pin
         self.pps_pin.irq(trigger=Pin.IRQ_RISING, handler=self.pps_handler)
-
-        print("[DEBUG] GPS initialized")
+        if self.DEBUG:
+            print("[DEBUG] GPS initialized")
 
     def power_off(self):
-        print("[DEBUG] Powering off GPS")
+        if self.DEBUG:
+            print("[DEBUG] Powering off GPS")
         self.gps_power_pin.value(1)
 
     def power_on(self):
@@ -100,7 +102,8 @@ class GPSHandler:
     # The @micropython.native decorator gives a 5% performance boost
     def read_gps(self):
         if not self.uart_readline:
-            print("[DEBUG] UART not initialized!")
+            if self.DEBUG:
+                print("[DEBUG] UART not initialized!")
             return self.gps_data
 
         line = self.uart_readline()
@@ -110,7 +113,8 @@ class GPSHandler:
         try:
             line_decoded = line.decode("ascii", "ignore").strip()
             if not line_decoded.startswith("$"):
-                # print(f"[DEBUG] Invalid NMEA sentence: {line_decoded}")
+                if self.DEBUG:
+                    print(f"[DEBUG] Invalid NMEA sentence: {line_decoded}")
                 return
             data = line_decoded.split(",")
             # Cache locally for performance
@@ -173,7 +177,8 @@ class GPSHandler:
                         continue
         except Exception as e:
             print(f"[ERROR] Error processing GPS data: {str(e)}")
-            print(f"[DEBUG] Raw line: {line}")
+            if self.DEBUG:
+                print(f"[DEBUG] Raw line: {line}")
 
         # Fix status handling
         if self.gps_data["fix"] == "No Fix":
@@ -190,7 +195,6 @@ class GPSHandler:
         time.sleep_ms(active_sleep)  # Active sleep to maintain timers
         if low_power_sleep > 0:
             lightsleep(low_power_sleep)  # Lightsleep for remaining interval
-
-        print(f"[DEBUG] Update interval: {self.update_interval} ms")
-        print(f"[DEBUG] GPS data: {self.gps_data}")
+        if self.DEBUG:
+            print(f"[DEBUG] Update interval: {self.update_interval} ms")
         return self.gps_data
