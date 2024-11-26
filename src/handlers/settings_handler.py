@@ -32,8 +32,9 @@ class SettingsHandler:
             os.stat(self.settings_file)
         except OSError:
             print("[INFO] Settings file not found. Creating new file with defaults.")
+            self.settings = self.default_settings.copy()
             self.save_settings()
-            return self.default_settings
+            return self.settings
 
         try:
             with open(self.settings_file, "r") as f:
@@ -44,10 +45,12 @@ class SettingsHandler:
             print(
                 "[WARNING] No saved settings found or file corrupted. Using defaults."
             )
-            return self.default_settings
+            self.settings = self.default_settings.copy()
+            return self.settings
         except Exception as e:
             print(f"[ERROR] Failed to load settings: {e}")
-            return self.default_settings
+            self.settings = self.default_settings.copy()
+            return self.settings
 
     """Save the current settings to a JSON file"""
 
