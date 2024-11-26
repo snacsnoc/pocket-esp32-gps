@@ -123,6 +123,7 @@ class DisplayHandler:
 
         self.display.show()
         self.led_handler.toggle_mode_led()
+        gc.collect()
 
     def gps_second_display(self):
         self.display.fill(0)
@@ -142,6 +143,7 @@ class DisplayHandler:
         self.display.show()
         # Wait for 3 seconds before returning to main display
         lightsleep(3000)
+        gc.collect()
 
     # Entry point for distance mode
     def enter_distance_mode(self):
@@ -154,6 +156,7 @@ class DisplayHandler:
                 self.point_A[0], self.point_A[1], self.point_B[0], self.point_B[1]
             )
             self.display_text("Distance:", f"{distance:.2f} m", "SET to reset")
+        gc.collect()
 
     # Entry point for settings mode
     def enter_settings_mode(self):
@@ -178,6 +181,7 @@ class DisplayHandler:
             print(f"[DEBUG] Error: {e}")
         self.display.text("Press NAV btn for more", 0, 50)
         self.display.show()
+        gc.collect()
 
     # Display device storage information
     def display_device_storage(self):
@@ -314,6 +318,7 @@ class DisplayHandler:
             )
 
         self.is_editing = not self.is_editing
+        gc.collect()
 
     def display_map(self):
         lat = self.gps.gps_data.get("lat")
