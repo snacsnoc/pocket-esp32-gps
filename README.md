@@ -32,17 +32,40 @@ It also calculates the distance between two set points using GPS coordinates and
 
 1. Connect the hardware components according to the pin configuration.
 2. Upload all files in the `src/` directory to the root directory of your ESP32 running MicroPython
-   2.1. Optionally use the Makefile to upload the files to the ESP32 using the `make flash` command.
-3. Power on the device.
-4. Drink a glass of water to stay hydrated.
-5. The device will start in GPS display mode, showing real-time GPS data.
-6. Press the reset/mode button to switch to distance calculation mode, settings, and the about screen.
-7. In distance mode, press the set button to mark point A, then again to mark point B.
-8. The device will display the calculated distance between the two points.
+   * Optionally use the Makefile to upload the files to the ESP32 using the `make flash` command.
+3. Upload your GeoJSON file to the ESP32 flash memory.
+   * This filename is currently hardcoded in `src/handlers/display_handler.py` as `simplified_out_0229.geojson`
+4. Power on the device.
+5. Drink a glass of water to stay hydrated.
+6. The device will start in GPS display mode, showing real-time GPS data.
+7. Press the reset/mode button to switch to distance calculation mode, settings, and the about screen.
+8. In distance mode, press the set button to mark point A, then again to mark point B.
+9. The device will display the calculated distance between the two points.
 
+## Menu
+The project has a menu system with the following screens:
+```mermaid
+graph LR
+    Start[GPS Display]
+    Second[Secondary GPS Display]
+    Map[Vector Map Display]
+    Zoom[Zoom Map Level]
+    Distance[Distance Calculation Mode]
+    Settings[Settings Screen]
+    About[About Screen]
+
+    Start --> Second
+    Second --> Map
+    Map --> Zoom
+    Zoom --> Map
+    Map --> Distance
+    Distance --> Settings
+    Settings --> About
+    About --> Start
+```
 ## Note
 
-The GPS module works best when you have a clear view of the sky.
+The GPS module works best when you have a clear view of the sky. 
 
 ## License
 This project is licensed under the GNU General Public License v3.0 (GPLv3), see `LICENSE` for more details.
