@@ -256,6 +256,11 @@ class DisplayHandler:
         elif self.settings_index == 2:
             pwr_save = self.settings_handler.get_setting("pwr_save", "DEVICE_SETTINGS")
             value = f"PWR Save: {'On' if pwr_save else 'Off'}"
+        elif self.settings_index == 1:
+            enable_leds = self.settings_handler.get_setting(
+                "enable_leds", "DEVICE_SETTINGS"
+            )
+            value = f"LEDs: {'On' if enable_leds else 'Off'}"
         else:
             value = ""
 
@@ -289,6 +294,15 @@ class DisplayHandler:
             )
             # Valid settings are 20MHz, 40MHz, 80Mhz, 160MHz or 240MHz (ESP32)
             freq(40000000 if new_pwr_save else 160000000)
+        elif self.settings_index == 3:
+            # Toggle LED status
+            enable_leds = self.settings_handler.get_setting(
+                "enable_leds", "DEVICE_SETTINGS"
+            )
+            new_enable_leds = not enable_leds
+            self.settings_handler.update_setting(
+                "enable_leds", new_enable_leds, "DEVICE_SETTINGS"
+            )
 
         self.is_editing = not self.is_editing
 

@@ -18,6 +18,7 @@ class SettingsHandler:
                 "pwr_save": False,
                 "screen_timeout_ms": 30000,
                 "pwr_save_boot": False,
+                "enable_leds": True,
             },
             "current_mode": 0,
             "settings_index": 0,
