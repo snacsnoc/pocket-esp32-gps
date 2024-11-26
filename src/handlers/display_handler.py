@@ -1,5 +1,5 @@
-import ssd1306
 from machine import freq, lightsleep, I2C, Pin
+import lib.ssd1306 as ssd1306
 import gc
 import os
 import esp32
