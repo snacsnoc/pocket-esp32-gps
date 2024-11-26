@@ -75,6 +75,8 @@ class VectorMap:
             x1, y1 = projected_points[i]
             x2, y2 = projected_points[i + 1]
             self.display.line(x1, y1, x2, y2, 1)  # Draw line on display
+        # This saves 2KB of RAM
+        projected_points.clear()
 
     # Render all map features with the current zoom level
     def render(self):
