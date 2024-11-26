@@ -2,7 +2,10 @@ from machine import Pin, lightsleep
 
 
 class LEDHandler:
-    def __init__(self):
+    def __init__(
+        self,
+        settings_handler,
+    ):
         self.mode_led = Pin(18, Pin.OUT)
         self.warning_led = Pin(23, Pin.OUT)
         self.success_led = Pin(19, Pin.OUT)
@@ -13,6 +16,7 @@ class LEDHandler:
         self.warning_led.value(0)
         self.success_led.value(0)
         self.error_led.value(0)
+        self.settings_handler = settings_handler
         # self.built_in_led.value(0)
 
     def are_leds_enabled(self):
