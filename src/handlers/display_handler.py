@@ -163,8 +163,8 @@ class DisplayHandler:
     # Display the about screen
     def display_about(self):
         self.display.fill(0)
-        self.display.text("Pocket ESP32 GPS", 0, 0)
-        self.display.text("v1.0 By Easton", 0, 9)
+        self.display.text("PocketNav 32 GPS", 0, 0)
+        self.display.text("v1.1 By Easton", 0, 9)
         cpu_freq = freq() / 1_000_000
         self.display.text(f"CPU: {cpu_freq:.0f} MHz", 0, 20)
         free_ram = gc.mem_free() / 1024
@@ -372,7 +372,7 @@ class DisplayHandler:
     # Initial boot screen
     def display_boot_screen(self):
         self.display.fill(0)
-        self.display.text("Pocket ESP32 GPS", 0, 9)
+        self.display.text("PocketNav 32 GPS", 0, 9)
         self.display.show()
 
         # Simulate a booting progress bar animation
