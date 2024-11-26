@@ -1,6 +1,5 @@
-import lib.ssd1306 as ssd1306
-
-from machine import freq, lightsleep
+import ssd1306
+from machine import freq, lightsleep, I2C, Pin
 import gc
 import os
 import esp32
@@ -25,11 +24,13 @@ class DisplayHandler:
         "Contrast",
         "Invert Display",
         "Power Save Mode",
+        "Enable LEDs",
     ]
 
-    def __init__(self, gps, i2c, led_handler, settings_handler):
+    def __init__(self, gps, led_handler, settings_handler):
         self.gps = gps
-        self.display = ssd1306.SSD1306_I2C(128, 64, i2c)
+        self.i2c, self.display, self.display_power_button = self.initialize_display()
+
         self.display_power_button = None
         self.led_handler = led_handler
         self.settings_handler = settings_handler
@@ -51,7 +52,7 @@ class DisplayHandler:
         self.location_update_threshold = 25
         self.vector_map = VectorMap(self.display, self.vector_map_file, bbox=None)
         self.vector_map.set_zoom(self.zoom_level)
-        self.initialize_display()
+        self.apply_display_settings_and_mode()
 
     def set_display_power_button(self, button):
         self.power_manager.set_display_power_button(button)
@@ -59,7 +60,15 @@ class DisplayHandler:
     def handle_user_interaction(self):
         self.power_manager.handle_user_interaction()
 
-    def initialize_display(self):
+    # Initialize I2C, the OLED display, and the display power button
+    @staticmethod
+    def initialize_display():
+        i2c = I2C(scl=Pin(22), sda=Pin(21))
+        display = ssd1306.SSD1306_I2C(128, 64, i2c)
+        display_power_button = Pin(13, Pin.IN, Pin.PULL_UP)  # Wake from sleep button
+        return i2c, display, display_power_button
+
+    def apply_display_settings_and_mode(self):
         self.display.contrast(
             self.settings_handler.get_setting("contrast", "LCD_SETTINGS")
         )

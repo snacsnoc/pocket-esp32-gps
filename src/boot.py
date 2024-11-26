@@ -2,7 +2,6 @@
 
 from machine import (
     Pin,
-    I2C,
     freq,
     ADC,
     lightsleep,
@@ -12,7 +11,7 @@ from machine import (
     Timer,
 )
 
-import lib.ssd1306 as ssd1306
+
 from handlers.gps_handler import GPSHandler
 from handlers.settings_handler import SettingsHandler
 from handlers.button_handler import ButtonHandler
@@ -21,26 +20,14 @@ from handlers.led_handler import LEDHandler
 from handlers.power_management import PowerManager
 
 
-# Initialize I2C and display
-
-
-def initialize_peripherals():
-    i2c = I2C(scl=Pin(22), sda=Pin(21))
-    display = ssd1306.SSD1306_I2C(128, 64, i2c)
-    led_handler = LEDHandler()
-    display_power_button = Pin(13, Pin.IN, Pin.PULL_UP)  # Wake from sleep button
-    return i2c, display, led_handler, display_power_button
-
-
-def initialize_handlers(i2c, led_handler, display_power_button):
+def initialize_handlers():
     settings_handler = SettingsHandler()
+    led_handler = LEDHandler(settings_handler)
     gps = GPSHandler(led_handler)
     gps.init_gps()
-    display_handler = DisplayHandler(gps, i2c, led_handler, settings_handler)
+    display_handler = DisplayHandler(gps, led_handler, settings_handler)
     button_handler = ButtonHandler(gps, display_handler)
-    power_manager = display_handler.power_manager
-    power_manager.set_display_power_button(display_power_button)
-    return settings_handler, gps, display_handler, button_handler
+    return settings_handler, led_handler, gps, display_handler, button_handler
 
 
 def manage_boot_cycle():
@@ -103,16 +90,17 @@ def setup_screen_timeout(settings_handler, power_manager):
 
 
 def main():
-    i2c, display, led_handler, display_power_button = initialize_peripherals()
     (
         settings_handler,
+        led_handler,
         gps,
         display_handler,
         button_handler,
-    ) = initialize_handlers(i2c, led_handler, display_power_button)
+    ) = initialize_handlers()
+
     power_manager = display_handler.power_manager
     manage_boot_cycle()
-    enter_power_save_mode(settings_handler, display)
+    enter_power_save_mode(settings_handler, display_handler)
 
     handle_deep_sleep(power_manager)
 
