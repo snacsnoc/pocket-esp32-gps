@@ -102,7 +102,6 @@ class VectorMap:
     def render_user_location(self, lat, lon):
         x, y = self.project_coordinates(lat, lon)
         if 0 <= x < self.display.width and 0 <= y < self.display.height:
-            self.draw_filled_circle(x, y, 2, 1)
 
             # Draw a small triangle manually
             self.display.line(x, y - 2, x - 2, y + 2, 1)  # Left side
