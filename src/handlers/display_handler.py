@@ -94,7 +94,7 @@ class DisplayHandler:
         self.current_mode = mode
         mode_functions = {
             0: self.show_main_gps_display,
-            1: self.display_map,
+            1: self.show_map_display,
             2: self.enter_distance_mode,
             3: self.enter_settings_mode,
             4: self.display_about,
@@ -271,10 +271,6 @@ class DisplayHandler:
 
         gc.collect()
 
-    # Display the map
-    def show_map_display(self):
-        self.display_map()
-
     # Handle nav button press to change zoom level when on map display
     def update_map_zoom(self):
         # Toggle between 3.0, 2.0 and 1.0 and 0.5 zoom levels
@@ -289,12 +285,12 @@ class DisplayHandler:
         if self.DEBUG:
             print(f"[DEBUG] Setting zoom level to {self.zoom_level}")
 
-        self.display_map()
+        self.show_map_display()
         self.prev_zoom_level = None
         gc.collect()
 
     def update_settings_display(self):
-        # self.display.fill(0)
+        self.display.fill(0)
         self.display.text("Settings", 0, 0)
 
         start_index = max(0, self.settings_index - 1)
@@ -322,8 +318,9 @@ class DisplayHandler:
             value = f"LEDs: {'On' if enable_leds else 'Off'}"
         else:
             value = ""
+        if value:
+            self.display.text(value, 0, 56)
 
-        self.display.text(value, 0, 56)
         self.display.show()
 
     # Apply a setting change from the settings menu
@@ -366,7 +363,8 @@ class DisplayHandler:
         self.is_editing = not self.is_editing
         gc.collect()
 
-    def display_map(self):
+    # Display the vector map
+    def show_map_display(self):
         lat = self.gps.gps_data.get("lat")
         lon = self.gps.gps_data.get("lon")
         fix = self.gps.gps_data.get("fix")
@@ -502,6 +500,8 @@ class DisplayHandler:
             self.update_settings_display()
         elif self.current_mode == 4:
             self.display_device_storage()
+        else:
+            self.display.fill(0)
 
     # Handle the SET button press per mode
     def handle_set_button(self):
