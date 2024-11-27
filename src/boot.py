@@ -106,10 +106,19 @@ def main():
     handle_boot_screen(display_handler)
     initialize_builtin_led()
     setup_screen_timeout(settings_handler, power_manager)
-
+    previous_mode = -1
     while True:
         try:
-            display_handler.enter_mode(display_handler.current_mode)
+            # Only call enter_mode if the mode has changed
+            if display_handler.current_mode != previous_mode:
+                print(
+                    f"[DEBUG] Mode changed: {previous_mode} -> {display_handler.current_mode}"
+                )
+
+                display_handler.enter_mode(display_handler.current_mode)
+                previous_mode = display_handler.current_mode  # Update the tracked mode
+
+            # display_handler.enter_mode(display_handler.current_mode)
             if display_handler.current_mode in [0, 1, 2]:  # Modes requiring GPS
                 gps.read_gps()
             lightsleep(110)
