@@ -8,23 +8,21 @@ class ButtonHandler:
         self.DEBOUNCE_DELAY = 100
 
         # Initialize buttons
-        self.set_button = Pin(27, Pin.IN, Pin.PULL_UP)
-        self.reset_mode_button = Pin(12, Pin.IN, Pin.PULL_UP)
-        self.display_power_button = Pin(13, Pin.IN, Pin.PULL_UP)
-        self.nav_button = Pin(14, Pin.IN, Pin.PULL_UP)
+        self.buttons = {
+            "set_button": Pin(27, Pin.IN, Pin.PULL_UP),
+            "reset_mode_button": Pin(12, Pin.IN, Pin.PULL_UP),
+            "display_power_button": Pin(13, Pin.IN, Pin.PULL_UP),
+            "nav_button": Pin(14, Pin.IN, Pin.PULL_UP),
+        }
 
-        # Attach interrupts
-        self.set_button.irq(trigger=Pin.IRQ_FALLING, handler=self.handle_any_button)
-        self.reset_mode_button.irq(
-            trigger=Pin.IRQ_FALLING, handler=self.handle_any_button
-        )
-        self.display_power_button.irq(
-            trigger=Pin.IRQ_FALLING, handler=self.handle_any_button
-        )
-        self.nav_button.irq(trigger=Pin.IRQ_FALLING, handler=self.handle_any_button)
+        # Attach a single interrupt handler
+        for button in self.buttons.values():
+            button.irq(trigger=Pin.IRQ_FALLING, handler=self.handle_any_button)
 
         # Provide the display power button to the display handler
-        self.display_handler.set_display_power_button(self.display_power_button)
+        self.display_handler.set_display_power_button(
+            self.buttons["display_power_button"]
+        )
 
     def handle_set_button(self, pin):
         self.display_handler.handle_set_button()
@@ -46,19 +44,17 @@ class ButtonHandler:
             # Handle any button press for power management
             self.display_handler.handle_user_interaction()
             # Then handle the buttons normally
-            if pin == self.set_button:
+            if pin == self.buttons["set_button"]:
                 self.handle_set_button(pin)
-            elif pin == self.reset_mode_button:
+            elif pin == self.buttons["reset_mode_button"]:
                 self.handle_mode_button(pin)
-            elif pin == self.nav_button:
+            elif pin == self.buttons["nav_button"]:
                 self.handle_nav_button(pin)
-            elif pin == self.display_power_button:
+            elif pin == self.buttons["display_power_button"]:
                 self.handle_display_power(pin)
 
     # Disable pull-up resistors for buttons
     # Saves power when not in use (before deep sleep)
     def disable_pullups(self):
-        self.set_button.init(pull=None)
-        self.reset_mode_button.init(pull=None)
-        self.display_power_button.init(pull=None)
-        self.nav_button.init(pull=None)
+        for button in self.buttons.values():
+            button.init(pull=None)
