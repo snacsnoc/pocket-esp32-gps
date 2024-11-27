@@ -1,10 +1,20 @@
 PORT = tty.usbserial-0001
 MPFSHELL = mpfshell
+MPY_CROSS=mpy-cross
 SRC_DIR = src
 
 .PHONY: all flash clean debug
 
 all: flash
+
+# Compile .py files in handlers directory to .mpy
+mpy-compile-handlers:
+	@echo "Compiling .py files in $(SRC_DIR)/handlers to .mpy..."
+	@for file in $(SRC_DIR)/handlers/*.py; do \
+		echo "Compiling $$file..."; \
+		$(MPY_CROSS) $$file || (echo "Error compiling $$file" && exit 1); \
+	done
+	@echo "Compilation complete."
 
 flash:
 	@echo "Flashing files to ESP32..."
@@ -34,6 +44,17 @@ flash-handlers:
 	|| (echo "Error: mpfshell command failed"; exit 1)
 	@echo "Flash complete and device reset."
 
+# Flash compiled .mpy files to the ESP32
+mpy-flash-handlers: mpy-compile-handlers
+	@echo "Flashing files to ESP32..."
+	@$(MPFSHELL) -n -c "\
+		open $(PORT); \
+		lcd $(HANDLERS_DIR)/; \
+		cd /handlers; \
+		mput *.mpy; \
+		exec import machine; exec machine.reset();" \
+	|| (echo "Error: mpfshell command failed"; exit 1)
+	@echo "Flash complete and device reset."
 
 clean:
 	@echo "Cleaning up all files from the ESP32..."
