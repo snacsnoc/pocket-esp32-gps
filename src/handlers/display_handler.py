@@ -269,7 +269,7 @@ class DisplayHandler:
         elif self.settings_index == 2:
             pwr_save = self.settings_handler.get_setting("pwr_save", "DEVICE_SETTINGS")
             value = f"PWR Save: {'On' if pwr_save else 'Off'}"
-        elif self.settings_index == 1:
+        elif self.settings_index == 3:
             enable_leds = self.settings_handler.get_setting(
                 "enable_leds", "DEVICE_SETTINGS"
             )
