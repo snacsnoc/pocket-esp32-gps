@@ -19,6 +19,8 @@ class GPSHandler:
             "hdop": 0,
             "utc_time": None,
             "utc_date": None,
+            "satellites": [],
+            "satellites_in_view": 0,
         }
         self.last_pps_time = None
 
@@ -39,7 +41,7 @@ class GPSHandler:
         self.DEBUG = False
 
     def set_update_interval(self, interval_ms):
-        self.update_interval = interval_ms
+        self.update_interval = max(interval_ms, 100)  # Minimum interval of 100 ms
 
     # Initialize UART1 to read from the GPS module
     def init_gps(self):
