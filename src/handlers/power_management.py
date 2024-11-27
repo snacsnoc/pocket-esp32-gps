@@ -7,10 +7,11 @@ import esp32
 
 
 class PowerManager:
-    def __init__(self, display, gps, settings_handler, led_handler):
+    def __init__(self, display, gps, settings_handler, led_handler, display_handler):
         self.display = display
         self.gps = gps
         self.settings_handler = settings_handler
+        self.display_handler = display_handler
         self.led_handler = led_handler  # Not used
 
         self.state = "active"
@@ -84,6 +85,9 @@ class PowerManager:
         if self.prolonged_inactivity_timer:
             self.prolonged_inactivity_timer.deinit()
         gc.collect()
+
+        # This is to ensure the device is in the correct mode when waking up
+        self.display_handler.enter_mode(self.display_handler.current_mode)
 
     def enter_deep_sleep(self):
         print("[DEBUG] Entering Deep Sleep Mode")

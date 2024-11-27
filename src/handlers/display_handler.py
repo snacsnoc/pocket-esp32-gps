@@ -26,6 +26,7 @@ class DisplayHandler:
         "Power Save Mode",
         "Enable LEDs",
     ]
+    DEBUG = False
 
     def __init__(self, gps, led_handler, settings_handler):
         self.gps = gps
@@ -35,7 +36,11 @@ class DisplayHandler:
         self.led_handler = led_handler
         self.settings_handler = settings_handler
         self.power_manager = PowerManager(
-            self.display, self.gps, self.settings_handler, self.led_handler
+            self.display,
+            self.gps,
+            self.settings_handler,
+            self.led_handler,
+            self,
         )
         self.power_manager.set_display_power_button(self.display_power_button)
 
@@ -49,6 +54,8 @@ class DisplayHandler:
         self.prev_zoom_level = self.zoom_level
         self.prev_lat = None
         self.prev_lon = None
+        self.prev_alt = None
+        self.prev_hdop = None
         self.location_update_threshold = 25
         self.vector_map = VectorMap(self.display, self.vector_map_file, bbox=None)
         self.vector_map.set_zoom(self.zoom_level)
@@ -77,6 +84,13 @@ class DisplayHandler:
 
     # Enter a mode and run the associated function
     def enter_mode(self, mode):
+
+        print(f"Before check: current_mode={self.current_mode}, requested_mode={mode}")
+        # Clear the display before setting up the new mode
+        # to prevent artifacts
+        self.display.fill(0)
+        self.display.show()
+
         self.current_mode = mode
         mode_functions = {
             0: self.show_main_gps_display,
@@ -86,6 +100,7 @@ class DisplayHandler:
             4: self.display_about,
         }
         self.led_handler.set_mode_led(1 if mode > 0 else 0)
+        # Call the function associated with the mode
         mode_functions.get(mode, self.show_main_gps_display)()
         gc.collect()
 
@@ -100,25 +115,55 @@ class DisplayHandler:
 
     # Update the GPS main display
     def update_gps_display(self):
-        self.display.fill(0)
+        # Instead of clearing the display, we'll just update the text
+        self.display.fill_rect(0, 0, 128, 10, 0)
         fix_status = self.gps.gps_data.get("fix", "No Fix")
         self.display.text(f"Fix: {fix_status}", 0, 0)
 
         if fix_status in ["Valid", "Partial"]:
+
             lat = self.gps.gps_data.get("lat")
             lon = self.gps.gps_data.get("lon")
             alt = self.gps.gps_data.get("alt")
-            sats = self.gps.gps_data.get("sats")
+            hdop = self.gps.gps_data.get("hdop")
 
-            if lat is not None:
+            # Update latitude if changed
+            if lat != self.prev_lat and lat is not None:
+                self.display.fill_rect(0, 20, 128, 10, 0)  # Clear previous text
                 self.display.text(f"Lat: {lat:.6f}", 0, 20)
-            if lon is not None:
+                self.prev_lat = lat
+            elif lat is not None:
+                # Re-display unchanged latitude
+                self.display.text(f"Lat: {lat:.6f}", 0, 20)
+
+            # Update longitude if changed
+            if lon != self.prev_lon and lon is not None:
+                self.display.fill_rect(0, 30, 128, 10, 0)
                 self.display.text(f"Lon: {lon:.6f}", 0, 30)
-            if alt is not None:
+                self.prev_lon = lon
+            elif lon is not None:
+                self.display.text(f"Lon: {lon:.6f}", 0, 30)
+
+            # Update altitude if changed
+            if alt != self.prev_alt and alt is not None:
+                self.display.fill_rect(0, 40, 128, 10, 0)
                 self.display.text(f"Alt: {alt}m", 0, 40)
-            if sats is not None:
-                self.display.text(f"Sats: {sats}", 0, 50)
+                self.prev_alt = alt
+            elif alt is not None:
+                self.display.text(f"Alt: {alt}m", 0, 40)
+
+            # Update HDOP if changed
+            # HDOP is the horizontal dilution of precision
+            if hdop != self.prev_hdop and hdop is not None:
+                self.display.fill_rect(0, 50, 128, 10, 0)
+                self.display.text(f"HDOP: {hdop:.1f}m", 0, 50)
+                self.prev_hdop = hdop
+            elif hdop is not None:
+                self.display.text(f"HDOP: {hdop:.1f}m", 0, 50)
+
         else:
+            # Clear dynamic areas and show waiting message
+            self.display.fill_rect(0, 20, 128, 40, 0)
             self.display.text("Waiting for fix...", 0, 30)
 
         self.display.show()
@@ -133,9 +178,8 @@ class DisplayHandler:
             self.display.text(f"Time: {self.gps.gps_data['utc_time']}", 0, 10)
             self.display.text(f"Date: {self.gps.gps_data['utc_date']}", 0, 20)
 
-        # Display horizontal dilution of precision if available
-        if "hdop" in self.gps.gps_data and self.gps.gps_data["hdop"] is not None:
-            self.display.text(f"hdop: {self.gps.gps_data['hdop']}m", 0, 30)
+        if "sats" in self.gps.gps_data and self.gps.gps_data["sats"] is not None:
+            self.display.text(f"Sats: {self.gps.gps_data['sats']}", 0, 30)
 
         # Display PPS if available
         if "pps" in self.gps.gps_data and self.gps.gps_data["pps"] is not None:
@@ -165,7 +209,6 @@ class DisplayHandler:
 
     # Display the about screen
     def display_about(self):
-        self.display.fill(0)
         self.display.text("PocketNav 32 GPS", 0, 0)
         self.display.text("v1.1 By Easton", 0, 9)
         cpu_freq = freq() / 1_000_000
@@ -178,7 +221,8 @@ class DisplayHandler:
             self.display.text(f"Temp: {temp_celsius:.2f} C", 0, 40)
         except Exception as e:
             self.display.text("Temp info N/A", 0, 40)
-            print(f"[DEBUG] Error: {e}")
+            if self.DEBUG:
+                print(f"[DEBUG] Error: {e}")
         self.display.text("Press NAV btn for more", 0, 50)
         self.display.show()
         gc.collect()
@@ -196,7 +240,8 @@ class DisplayHandler:
             self.display.text(f"Flash: {flash_size}B", 0, 50)
         except Exception as e:
             self.display.text("Storage info N/A", 0, 40)
-            print(f"[DEBUG] Error: {e}")
+            if self.DEBUG:
+                print(f"[DEBUG] Error: {e}")
         self.display.show()
         utime.sleep(2.5)
 
@@ -241,14 +286,15 @@ class DisplayHandler:
             self.zoom_level = 0.5
         else:
             self.zoom_level = 3.0
+        if self.DEBUG:
+            print(f"[DEBUG] Setting zoom level to {self.zoom_level}")
 
-        print(f"[DEBUG] Setting zoom level to {self.zoom_level}")
         self.display_map()
         self.prev_zoom_level = None
         gc.collect()
 
     def update_settings_display(self):
-        self.display.fill(0)
+        # self.display.fill(0)
         self.display.text("Settings", 0, 0)
 
         start_index = max(0, self.settings_index - 1)
@@ -326,7 +372,6 @@ class DisplayHandler:
         fix = self.gps.gps_data.get("fix")
 
         if fix == "No Fix" or lat is None or lon is None:
-            self.display.fill(0)
             self.display_text("No GPS data", "available")
             self.display.show()
             lightsleep(2000)
@@ -353,7 +398,8 @@ class DisplayHandler:
         if location_changed or zoom_level_changed:
             # Recalculate bbox based on current location and zoom level
             default_bbox = VectorMap.calculate_bbox_for_zoom(lat, lon, self.zoom_level)
-            print(f"[DEBUG] Updated BBox: {default_bbox}")
+            if self.DEBUG:
+                print(f"[DEBUG] Default BBox: {default_bbox}")
             # Update the bbox in the existing VectorMap
             self.vector_map.update_bbox(default_bbox)
             # Update previous location and zoom level
@@ -406,7 +452,7 @@ class DisplayHandler:
                 self.led_handler.set_error_led(0)
 
             # Pause for animation
-            utime.sleep(0.25)
+            utime.sleep(0.20)
 
         # Clear the progress bar once boot is complete
         self.display.fill(0)
@@ -427,7 +473,8 @@ class DisplayHandler:
 
     # Toggle display power and enter deep sleep
     def toggle_display_power(self, timer=None):
-        print(f"[DEBUG] Toggling display power with timer: {timer}")
+        if self.DEBUG:
+            print(f"[DEBUG] Toggling display power with timer: {timer}")
         if self.power_manager.state == "deep_sleep":
             # Debounce to avoid immediate wake-up
             utime.sleep_ms(500)
@@ -438,8 +485,11 @@ class DisplayHandler:
 
     # Cycle through modes
     def cycle_mode(self):
+        if self.DEBUG:
+            print(f"[DEBUG] cycle_mode called. Current mode: {self.current_mode}")
         self.current_mode = (self.current_mode + 1) % len(self.MODES)
-        self.enter_mode(self.current_mode)
+        if self.DEBUG:
+            print(f"[DEBUG] New mode after cycling: {self.current_mode}")
 
     # Handle navigation button per mode
     def handle_nav_button(self):
