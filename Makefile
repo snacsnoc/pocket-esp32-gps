@@ -49,9 +49,9 @@ mpy-flash-handlers: mpy-compile-handlers
 	@echo "Flashing files to ESP32..."
 	@$(MPFSHELL) -n -c "\
 		open $(PORT); \
-		lcd $(HANDLERS_DIR)/; \
-		cd /handlers; \
-		mput *.mpy; \
+		lcd src/; \
+		cd /handlers; lcd handlers/; \
+		mput .*\.mpy; \
 		exec import machine; exec machine.reset();" \
 	|| (echo "Error: mpfshell command failed"; exit 1)
 	@echo "Flash complete and device reset."
