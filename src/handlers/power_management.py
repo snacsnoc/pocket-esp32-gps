@@ -18,7 +18,7 @@ class PowerManager:
         self.idle_timeout_ms = self.settings_handler.get_setting(
             "screen_timeout_ms", "DEVICE_SETTINGS"
         )
-        self.deepsleep_timeout_ms = 600000  # 10 minutes
+        self.deepsleep_timeout_ms = 480000  # 8 minutes
         self.inactivity_timer = Timer(-1)
         self.prolonged_inactivity_timer = Timer(-1)
 
@@ -69,11 +69,8 @@ class PowerManager:
 
         self.display.poweroff()
         self.gps.set_update_interval(30000)  # 30 seconds
-        if (
-            self.prolonged_inactivity_timer is None
-            or not self.prolonged_inactivity_timer
-        ):
-            self.reset_prolonged_inactivity_timer()
+        self.reset_prolonged_inactivity_timer()
+
         gc.collect()
 
     def exit_idle_mode(self):
@@ -83,6 +80,7 @@ class PowerManager:
         self.gps.set_update_interval(1000)  # 1 second
         self.reset_inactivity_timer()
         if self.prolonged_inactivity_timer:
+            print("Deinit prolonged inactivity timer")
             self.prolonged_inactivity_timer.deinit()
         gc.collect()
 
@@ -90,7 +88,7 @@ class PowerManager:
         self.display_handler.enter_mode(self.display_handler.current_mode)
 
     def enter_deep_sleep(self):
-        print("[DEBUG] Entering Deep Sleep Mode")
+        print("[DEBUG] Entering deep sleep mode")
         self.state = "deep_sleep"
         self.display.poweroff()
         self.gps.power_off()
@@ -98,7 +96,7 @@ class PowerManager:
         deepsleep()
 
     def wake_from_deep_sleep(self):
-        print("[DEBUG] Waking from Deep Sleep")
+        print("[DEBUG] Waking from deep sleep mode")
         self.state = "active"
         self.display.poweron()
         self.gps.power_on()

@@ -67,7 +67,6 @@ def handle_boot_screen(display_handler):
 
 def handle_deep_sleep(power_manager):
     if reset_cause() == DEEPSLEEP_RESET:
-        print("[DEBUG] Waking from deep sleep")
         power_manager.wake_from_deep_sleep()
 
 
